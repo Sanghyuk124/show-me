@@ -1,7 +1,6 @@
 "use client";
 
-import { PhotoTile } from "@/components/PhotoTile";
-import { PrimaryButton, TabHeader } from "@/components/ui";
+import { cn, TabHeader } from "@/components/ui";
 import { TASTE_PHOTOS } from "@/lib/data";
 import { setApp, useApp } from "@/lib/store";
 
@@ -14,16 +13,18 @@ function rankTags(picks: number[]) {
 
 const same = (a: number[] | null, b: number[]) => !!a && a.length === b.length && a.every((n) => b.includes(n));
 
-function Row({ label, title, desc }: { label: string; title: string; desc: string }) {
+function Row({ label, title, desc, children }: { label: string; title: string; desc: string; children?: React.ReactNode }) {
   return (
-    <div className="mt-2.5 first:mt-2">
-      <p className="text-[10px] text-sub">{label}</p>
-      <p className="mt-0.5 text-[12px] font-bold">{title}</p>
-      <p className="mt-0.5 text-[10px] text-sub">{desc}</p>
+    <div className="flex flex-col gap-[1.9px] leading-[1.4]">
+      <p className="text-[10px] font-medium text-sub">{label}</p>
+      <p className="text-[12px] font-bold">{title}</p>
+      <p className="text-[10px] text-sub">{desc}</p>
+      {children}
     </div>
   );
 }
 
+/** Figma 08 · 취향 찾기 */
 export default function TastePage() {
   const { tastePicks, tasteSaved } = useApp();
   const ranked = rankTags(tastePicks);
@@ -36,32 +37,57 @@ export default function TastePage() {
   return (
     <>
       <TabHeader title="취향 찾기" />
-      <main className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-4 pt-2 pb-4">
-        <h2 className="text-[20px] leading-[27px] font-bold">
+      <main className="no-scrollbar flex min-h-0 flex-1 flex-col gap-[8.6px] overflow-y-auto px-[15.85px] pt-[10.7px] pb-[12.8px]">
+        <h2 className="text-[21px] leading-[1.35] font-bold">
           좋아하는 장면을 모으면,
           <br />
           나만의 취향이 보여요.
         </h2>
-        <p className="mt-2 text-[10px] text-sub">마음이 가는 사진을 눌러보세요.&nbsp;&nbsp;{tastePicks.length}개 선택</p>
+        <p className="text-[10px] leading-[1.4] text-sub">마음이 가는 사진을 눌러 보세요. 여러 장 선택할 수 있어요.</p>
 
-        <div className="mx-auto mt-2 grid w-[68%] grid-cols-3 gap-[7px]">
-          {TASTE_PHOTOS.map((p) => (
-            <PhotoTile key={p.id} src={p.src} aspect="78 / 97" label={`취향 사진 ${p.id}`} on={tastePicks.includes(p.id)} onClick={() => toggle(p.id)} />
-          ))}
+        <div className="mx-auto grid grid-cols-[repeat(3,80px)] gap-1.5">
+          {TASTE_PHOTOS.map((p) => {
+            const on = tastePicks.includes(p.id);
+            return (
+              <button
+                key={p.id}
+                type="button"
+                aria-pressed={on}
+                aria-label={`취향 사진 ${p.id} · ${p.tag}`}
+                onClick={() => toggle(p.id)}
+                className="relative h-[100px] w-20 overflow-hidden rounded-[3.3px]"
+              >
+                <img src={p.src} alt="" className="absolute inset-0 size-full rounded-[3.3px] object-cover" />
+                {on && (
+                  <>
+                    <span className="absolute inset-0 rounded-[3.3px] border-[2.5px] border-plum" />
+                    <span className="absolute top-1.5 right-1.5 flex size-5 items-center justify-center rounded-[10px] bg-plum text-[12px] font-bold text-white">
+                      ✓
+                    </span>
+                  </>
+                )}
+              </button>
+            );
+          })}
         </div>
 
-        <PrimaryButton className="mt-2 h-[43px]" onClick={() => setApp((s) => ({ tasteSaved: s.tastePicks }))}>
+        <button
+          type="button"
+          onClick={() => setApp((s) => ({ tasteSaved: s.tastePicks }))}
+          className="flex h-11 w-full shrink-0 items-center justify-center rounded-[10px] bg-plum px-4 py-3 text-[14px] font-bold text-white active:opacity-85"
+        >
           {saved ? "저장했어요" : "저장하기"}
-        </PrimaryButton>
+        </button>
 
-        <section className="mt-2 rounded-lg bg-lav px-2.5 py-2.5">
-          <h3 className="text-[13px] font-bold text-plum">지금, 나의 취향 현황</h3>
-          <Row label="나의 추구미" title={direction || "아직 알아가는 중"} desc={direction ? "선택한 사진에서 찾은 방향이에요." : "사진을 고르면 방향을 찾아드려요."} />
-          <div className="mt-1 flex h-[3px] gap-0.5">
-            {ranked.map(([tag, n], i) => (
-              <span key={tag} style={{ flex: n / total }} className={i === 0 ? "rounded-full bg-plum" : "rounded-full bg-plum-soft"} />
-            ))}
-          </div>
+        <section className="flex flex-col gap-[6.7px] rounded-[9.25px] bg-lav px-[10.6px] py-[8.6px]">
+          <h3 className="text-[14px] leading-[1.4] font-bold text-plum">지금, 나의 취향 현황</h3>
+          <Row label="나의 추구미" title={direction || "아직 알아가는 중"} desc={direction ? "선택한 사진에서 찾은 방향이에요." : "사진을 고르면 방향을 찾아드려요."}>
+            <div className="flex gap-[1.4px]">
+              {ranked.map(([tag, n], i) => (
+                <span key={tag} style={{ flex: n / total }} className={cn("h-[2.64px] rounded-[1.32px]", i === 0 ? "bg-plum" : "bg-plum-soft")} />
+              ))}
+            </div>
+          </Row>
           <Row label="실제로 가장 많이 입는 스타일" title="아직 알아가는 중" desc="옷장에 착용 기록을 남기면 보여드려요." />
           <Row
             label="퍼스널 데이터 기반 추천"

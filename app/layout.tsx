@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "@fontsource/noto-sans-kr/400.css";
 import "@fontsource/noto-sans-kr/500.css";
 import "@fontsource/noto-sans-kr/700.css";
-import "@fontsource/noto-serif/latin-400.css";
+import "@fontsource/lora/400.css";
 import "./globals.css";
 import { Toast } from "@/components/ui";
 
@@ -16,7 +16,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover",
-  themeColor: "#f9f7f3",
+  themeColor: "#faf8f4",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

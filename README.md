@@ -23,10 +23,10 @@ npm run dev
 | 화면별 코드 | `app/` 안의 각 폴더 `page.tsx` |
 | 이미지 | `public/images/` |
 
-## 이미지 교체
+## 이미지·아이콘
 
-지금 이미지는 녹화 영상에서 잘라낸 것이라 화질이 낮습니다.
-피그마에서 원본을 내보낸 뒤 `public/images/`의 같은 파일명(.jpg)으로 덮어쓰면 바로 반영됩니다.
+`public/images/`와 `public/icons/`의 파일은 Figma(Show Me - 수정본)에서 내려받은 원본입니다.
+남성 온보딩 사진은 `style-male-*.jpg`, 남성 아바타는 `avatar/body-male.jpg`이고, 기본 정보에서 성별을 바꾸면 자동으로 바뀝니다.
 
 ## 화면 주소
 

@@ -2,21 +2,21 @@
 
 /* ───────── 디자인 색상·글꼴: 여기만 바꾸면 앱 전체에 반영됩니다 ───────── */
 @theme {
-  --color-plum: #663f57;
-  --color-plum-soft: #8f6c80;
-  --color-lav: #ebe3e9;
-  --color-sand: #f2ece3;
-  --color-cream: #f9f7f3;
-  --color-line: #e8e4e0;
-  --color-ink: #2b2729;
-  --color-sub: #6f6a6e;
-  --color-faint: #9a9498;
+  --color-plum: #694557;
+  --color-plum-soft: #bc9baa;
+  --color-lav: #eee5ea;
+  --color-sand: #f6eee5;
+  --color-cream: #faf8f4;
+  --color-line: #e3dde0;
+  --color-ink: #302b32;
+  --color-sub: #766c73;
+  --color-faint: #a2979f;
   --color-off: #dfdadd;
-  --color-warn: #8a5a3c;
-  --color-sun: #a8607c;
+  --color-warn: #8b5c3f;
+  --color-sun: #a27079;
 
   --font-sans: "Noto Sans KR", system-ui, sans-serif;
-  --font-serif: "Noto Serif", Georgia, serif;
+  --font-serif: "Lora", Georgia, serif;
 
   --animate-fade: fade 0.2s ease-out;
   --animate-pop: pop 0.2s ease-out;
