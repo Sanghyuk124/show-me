@@ -1,15 +1,82 @@
 // 쇼핑메이트의 답변을 만드는 곳입니다.
-// 지금은 AI가 아니라 '미리 써둔 예시 답변'입니다.
-// 실제 AI를 연결할 때는 getReply 함수 안쪽만 API 호출로 바꾸면 화면은 그대로 동작합니다.
+// - 서버에 Claude API 키(ANTHROPIC_API_KEY)가 있으면 app/api/chat/route.ts 를 통해 Claude가 답해요.
+// - 키가 없으면 아래 cannedReply 의 '미리 써둔 예시 답변'으로 대신 답해요.
 
 import type { AppState } from "./store";
+import { CONCERNS, PERSONAL_COLORS, TASTE_PHOTOS, type ClosetItem, type Measures, type Profile } from "./data";
 
 export interface Reply {
   text: string;
   chips?: string[];
 }
 
+/** 서버로 보내는 대화 한 줄 */
+export interface ChatTurn {
+  role: "user" | "bot";
+  text: string;
+}
+
+/** 서버로 보내는 사용자 정보 (Claude가 맞춤 답변에 참고해요) */
+export interface ChatContext {
+  profile: Profile;
+  personalColor: string;
+  concerns: string[];
+  concernNote: string;
+  taste: string;
+  body: Measures;
+  closet: Pick<ClosetItem, "name" | "category" | "favorite" | "size" | "measures">[];
+}
+
+// 채팅 화면 맨 위에 고정으로 보이는 첫 상담. Claude도 이 대화를 이어서 답하도록 함께 보내요.
+const FIRST_EXCHANGE: ChatTurn[] = [
+  { role: "user", text: "다음 주 첫 출근인데 뭘 입어야 할까?\n너무 격식 차린 느낌은 싫어." },
+  {
+    role: "bot",
+    text:
+      "첫 출근, 설레면서도 고민되죠. 우선 옷장에 있는 옷으로 시작해볼까요?\n" +
+      "[단정하지만 편안하게] 아이보리 셔츠 + 블랙 슬랙스 + 네이비 가디건\n" +
+      "셔츠는 첫인상을 단정하게 잡아주고, 가디건이 재킷보다 편안한 인상을 더해요. 비슷한 어두운 톤이 전체를 정돈해줘요.\n" +
+      "가지고 있는 검정 토트백을 더하면 충분해요. 회사 복장 분위기는 어떤 편인가요?",
+  },
+];
+
+function buildContext(app: AppState): ChatContext {
+  const count = new Map<string, number>();
+  TASTE_PHOTOS.filter((p) => app.tastePicks.includes(p.id)).forEach((p) => count.set(p.tag, (count.get(p.tag) ?? 0) + 1));
+  const taste = [...count.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([t]) => t).join(" · ");
+  return {
+    profile: app.profile,
+    personalColor: PERSONAL_COLORS.find((c) => c.id === app.profile.personalColor)?.label ?? "아직 모름",
+    concerns: app.concerns.map((id) => CONCERNS.find((c) => c.id === id)?.title ?? id),
+    concernNote: app.concernNote,
+    taste,
+    body: app.body,
+    closet: app.closet.map(({ name, category, favorite, size, measures }) => ({ name, category, favorite, size, measures })),
+  };
+}
+
+/** 메시지를 보내면 답변을 돌려줍니다. Claude 연결이 안 되어 있으면 예시 답변을 써요. */
 export async function getReply(message: string, app: AppState): Promise<Reply> {
+  const history: ChatTurn[] = [...FIRST_EXCHANGE, ...app.chat.map((m) => ({ role: m.role, text: m.text })), { role: "user", text: message }];
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ history, context: buildContext(app) }),
+    });
+    if (res.status === 503) return cannedReply(message, app); // API 키가 아직 없어요
+    if (res.status === 429) return { text: "지금 질문이 많아서 잠시 후에 다시 답해 드릴게요." };
+    if (!res.ok) return { text: "답변을 가져오지 못했어요. 잠시 후 다시 시도해 주세요." };
+    const data: { text?: string } = await res.json();
+    return { text: data.text ?? "답변을 가져오지 못했어요. 잠시 후 다시 시도해 주세요." };
+  } catch {
+    // 서버에 연결할 수 없을 때(오프라인 등)도 예시 답변으로 대신해요.
+    return cannedReply(message, app);
+  }
+}
+
+/** API 키가 없을 때 쓰는 미리 써둔 예시 답변 (보낸 글의 단어를 보고 골라요) */
+async function cannedReply(message: string, app: AppState): Promise<Reply> {
   await new Promise((r) => setTimeout(r, 700));
   const text = message.trim();
   const bottom = app.closet.find((i) => i.category === "bottom" && i.favorite);
