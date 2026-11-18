@@ -1,7 +1,9 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { setApp, useApp } from "@/lib/store";
 import { BackButton, cn } from "./ui";
 
 /** 온보딩 3단계 공통 틀 (Figma 02·03·04 화면의 헤더·진행 막대·하단 버튼) */
@@ -24,6 +26,14 @@ export function OnboardingFrame({
   footer?: ReactNode;
   children: ReactNode;
 }) {
+  const router = useRouter();
+  const { onboarded } = useApp();
+  // 온보딩은 처음 들어온 사용자에게만 보여줘요. 이미 끝냈다면 채팅으로 보냅니다.
+  useEffect(() => {
+    if (onboarded) router.replace("/chat");
+  }, [onboarded, router]);
+  if (onboarded) return null;
+
   return (
     <>
       <header className="pt-safe flex shrink-0 flex-col gap-2.5 px-6 pb-3">
@@ -42,6 +52,8 @@ export function OnboardingFrame({
       <div className="pb-safe flex shrink-0 flex-col gap-3 px-6 pt-3">
         <Link
           href={next}
+          // 마지막 단계에서 누르면 온보딩을 끝낸 것으로 기록해요.
+          onClick={() => step === 3 && setApp(() => ({ onboarded: true }))}
           className="block w-full rounded-xl bg-plum p-4 text-center text-[14px] leading-[1.5] font-bold text-white transition active:opacity-85"
         >
           {cta}

@@ -38,6 +38,8 @@ export interface AppState {
   selectedDate: string;
   cart: CartItem[];
   chat: ChatMessage[];
+  /** 온보딩(기본 정보·패션 고민·좋아하는 스타일)을 끝냈는지. 끝낸 사용자에게는 다시 보여주지 않아요. */
+  onboarded: boolean;
 }
 
 const STORAGE_KEY = "showme-v1";
@@ -58,6 +60,7 @@ const initialState: AppState = {
   selectedDate: DEMO_TODAY,
   cart: CART_SEED,
   chat: [],
+  onboarded: false,
 };
 
 let state = initialState;
