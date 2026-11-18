@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { Category, ClosetItem, Measures } from "@/lib/data";
 import { GENDER_LABEL } from "@/lib/data";
 import { updateItem, useApp } from "@/lib/store";
-import { cn, decimal, Modal, PrimaryButton, UnitInput } from "./ui";
+import { cn, decimal, Modal } from "./ui";
 
 const UPPER = [
   { key: "length", label: "총 기장" },
@@ -13,7 +13,7 @@ const UPPER = [
   { key: "waist", label: "허리 둘레" },
 ];
 
-const COPY: Record<Category, { label: string; fields: { key: string; label: string }[] }> = {
+export const COPY: Record<Category, { label: string; fields: { key: string; label: string }[] }> = {
   top: { label: "상의", fields: UPPER },
   outer: { label: "아우터", fields: UPPER },
   bottom: {
@@ -37,7 +37,7 @@ const COPY: Record<Category, { label: string; fields: { key: string; label: stri
   },
 };
 
-function guide(item: ClosetItem) {
+export function guide(item: ClosetItem) {
   if (item.prefilled) {
     return {
       tone: "lav",
@@ -90,14 +90,18 @@ export function MeasureModal({ item, onClose }: { item: ClosetItem; onClose: () 
   const separate = item.category === "bag" || item.category === "outer";
 
   return (
-    <Modal title={`${copy.label} 실측 ${item.prefilled ? "확인" : "입력"}`} onClose={onClose}>
-      <p className="mt-5 text-[12px] font-medium text-plum">
+    <Modal
+      title={`${copy.label} 실측 ${item.prefilled ? "확인" : "입력"}`}
+      onClose={onClose}
+      className={item.prefilled ? "gap-3.5 px-[22px] py-[18px]" : "gap-4 p-[22px]"}
+    >
+      <p className="text-[12px] leading-[1.5] font-medium text-plum">
         {GENDER_LABEL[app.profile.gender]} · {item.name} · {item.source === "photo" ? "사진" : "링크"} 등록
       </p>
 
-      <div className={cn("mt-3 rounded-lg px-3 py-2.5", g.tone === "sand" ? "bg-sand" : "bg-lav")}>
-        <p className="text-[12.5px] font-bold">{g.title}</p>
-        <p className="mt-1 text-[10.5px] leading-[17px] text-sub">
+      <div className={cn("flex flex-col gap-[5px] rounded-[10px] p-[13px] leading-[1.5]", g.tone === "sand" ? "bg-sand" : "bg-lav")}>
+        <p className={cn("text-[13px] font-bold", g.tone === "lav" && "text-plum")}>{g.title}</p>
+        <p className="text-[11px] text-sub">
           {g.lines.map((l) => (
             <span key={l} className="block">
               {l}
@@ -106,57 +110,77 @@ export function MeasureModal({ item, onClose }: { item: ClosetItem; onClose: () 
         </p>
       </div>
 
-      <div className="mt-3.5 space-y-2.5">
+      <div className="flex flex-col gap-3 leading-[1.5]">
         {copy.fields.map((f, i) => (
-          <label key={f.key} className="block">
-            <span className="mb-1.5 block text-[11.5px] text-sub">{f.label}</span>
-            <UnitInput
-              label={f.label}
-              unit="cm"
-              tone={item.prefilled ? "lav" : "cream"}
-              value={draft[f.key] ?? ""}
-              placeholder={i === 0 && item.source === "photo" && item.category === "top" ? "예: 68.5" : "입력하기"}
-              onChange={(v) => setDraft((d) => ({ ...d, [f.key]: decimal(v) }))}
-            />
+          <label key={f.key} className="flex flex-col gap-1.5">
+            <span className="text-[12px] font-medium text-sub">{f.label}</span>
+            <span
+              className={cn(
+                "flex items-center rounded-[9px] border border-line p-3 transition focus-within:border-plum",
+                item.prefilled ? "bg-[#f4eff2]" : "bg-cream",
+              )}
+            >
+              <input
+                aria-label={f.label}
+                inputMode="decimal"
+                value={draft[f.key] ?? ""}
+                placeholder={i === 0 && item.source === "photo" && item.category === "top" ? "예: 68.5" : "입력하기"}
+                onChange={(e) => setDraft((d) => ({ ...d, [f.key]: decimal(e.target.value) }))}
+                className="w-0 min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-[#9b9098]"
+              />
+              <span className="ml-2 text-[11px] text-sub">cm</span>
+            </span>
           </label>
         ))}
       </div>
 
       {item.prefilled ? (
         <>
-          <div className="mt-3 rounded-lg bg-lav px-3 py-2.5">
-            <p className="text-[12px] font-bold">
+          <div className="flex flex-col gap-[5px] rounded-[10px] bg-lav p-3 leading-[1.5]">
+            <p className="text-[12px] font-bold text-plum">
               ★ 즐겨찾는 {copy.label} · {item.confirmed ? "기준 실측 완료" : "예시 확인 필요"}
             </p>
-            <p className="mt-1 text-[10.5px] text-sub">
-              {topDone ? "상·하의 기준 실측이 완성됐어요." : "상의도 1벌 이상 실측을 입력하면 기준이 완성돼요."}
-            </p>
+            <p className="text-[10px] text-sub">{topDone ? "상·하의 기준 실측이 완성됐어요." : "상의도 1벌 이상 실측을 입력하면 기준이 완성돼요."}</p>
           </div>
-          <PrimaryButton className="mt-3.5 h-[44px]" disabled={!complete} onClick={save}>
+          <SaveButton disabled={!complete} onClick={save}>
             확인 완료
-          </PrimaryButton>
+          </SaveButton>
         </>
       ) : (
         <>
-          <p className="mt-3 text-[10.5px] leading-[17px] text-sub">
+          <p className="text-[11px] leading-[1.5] text-sub">
             {footnote(item).map((l) => (
               <span key={l} className="block">
                 {l}
               </span>
             ))}
           </p>
-          <PrimaryButton className="mt-3 h-[43px]" disabled={!complete} onClick={save}>
+          <SaveButton disabled={!complete} onClick={save}>
             {complete ? "실측 저장" : "모든 실측 입력 후 저장"}
-          </PrimaryButton>
-          <button type="button" onClick={onClose} className="mt-3 h-[43px] w-full rounded-lg border border-line text-[12px] font-bold">
+          </SaveButton>
+          <button type="button" onClick={onClose} className="rounded-[10px] border border-line bg-white p-[13px] text-[12px] leading-[1.5] font-bold text-plum">
             나중에 입력하기
           </button>
-          <p className="mt-3 text-[10px] text-warn">
+          <p className="text-[10px] leading-[1.5] text-warn">
             {separate ? "저장한 실측은 이 아이템에서 다시 확인·수정해요." : "미입력 시 핏 컨설팅·추천 정확도가 낮아질 수 있어요."}
           </p>
         </>
       )}
     </Modal>
+  );
+}
+
+/** 팝업 안 저장 버튼 (Figma: 비활성 #e3dde0 / 활성 자주색) */
+export function SaveButton({ disabled, onClick, children }: { disabled?: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="rounded-[10px] bg-plum p-[13px] text-[12px] leading-[1.5] font-bold text-white transition active:opacity-85 disabled:bg-line disabled:text-sub"
+    >
+      {children}
+    </button>
   );
 }
 
@@ -167,4 +191,39 @@ export function itemStatus(item: ClosetItem) {
   if (item.confirmed) return `${source} · ${item.favorite ? "기준 실측 완료" : "실측 완료"}`;
   if (item.prefilled) return `${source} · 예시 확인 필요`;
   return item.source === "photo" ? `${source} · 실측 필요` : `${source} · 실측 자동 입력`;
+}
+
+/** Figma 05b · 제품 상세 단독 — 채팅 추천 코디의 옷을 눌렀을 때 */
+export function ProductDetailModal({ item, onClose, onAddToCart }: { item: ClosetItem; onClose: () => void; onAddToCart: () => void }) {
+  const app = useApp();
+  const copy = COPY[item.category];
+  const g = guide(item);
+  const topDone = app.closet.some((i) => i.favorite && (i.category === "top" || i.category === "outer") && i.confirmed);
+  const status = item.confirmed ? "기준 실측 완료" : item.prefilled ? "예시 확인 필요" : "실측 확인 필요";
+
+  return (
+    <Modal title="제품 상세 정보" onClose={onClose} align="center" className="gap-3.5 px-[22px] py-[18px]">
+      <p className="text-[12px] leading-[1.5] font-medium text-plum">
+        {item.favorite && "★ "}
+        {item.name}
+      </p>
+      <div className={cn("flex flex-col gap-[5px] rounded-[10px] p-[13px] leading-[1.5]", g.tone === "sand" ? "bg-sand" : "bg-lav")}>
+        <p className={cn("text-[13px] font-bold", g.tone === "lav" && "text-plum")}>{g.title}</p>
+        <p className="text-[11px] text-sub">
+          {g.lines.map((l) => (
+            <span key={l} className="block">
+              {l}
+            </span>
+          ))}
+        </p>
+      </div>
+      <div className="flex flex-col gap-[5px] rounded-[10px] bg-lav p-3 leading-[1.5]">
+        <p className="text-[12px] font-bold text-plum">
+          {item.favorite ? `★ 즐겨찾는 ${copy.label}` : copy.label} · {status}
+        </p>
+        <p className="text-[10px] text-sub">{topDone ? "상·하의 기준 실측이 완성됐어요." : "상의도 1벌 이상 실측을 입력하면 기준이 완성돼요."}</p>
+      </div>
+      <SaveButton onClick={onAddToCart}>장바구니 담기</SaveButton>
+    </Modal>
+  );
 }

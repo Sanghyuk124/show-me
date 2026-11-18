@@ -46,7 +46,7 @@ const initialState: AppState = {
   profile: { nickname: "", age: "24", gender: "female", height: "163", weight: "46", personalColor: "unknown" },
   concerns: ["advice"],
   concernNote: "",
-  stylePicks: [],
+  stylePicks: [0],
   tastePicks: [1, 8],
   tasteSaved: null,
   closet: CLOSET_SEED,

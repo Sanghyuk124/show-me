@@ -4,7 +4,8 @@ import { useState } from "react";
 import { Link2 } from "lucide-react";
 import type { Category, ClosetItem } from "@/lib/data";
 import { setApp } from "@/lib/store";
-import { cn, Modal, PrimaryButton } from "./ui";
+import { SaveButton } from "./MeasureModal";
+import { cn, Modal } from "./ui";
 
 const OPTIONS: { id: Category; label: string }[] = [
   { id: "top", label: "상의" },
@@ -50,7 +51,7 @@ export function RegisterItemModal({
 
   return (
     <Modal title="내 옷 등록" onClose={onClose} align="center">
-      <div className="mt-4 flex h-32 items-center justify-center overflow-hidden rounded-lg bg-sand">
+      <div className="flex h-32 items-center justify-center overflow-hidden rounded-[10px] bg-sand">
         {source.image ? (
           <img src={source.image} alt="등록할 옷" className="h-full w-full object-cover" />
         ) : (
@@ -61,17 +62,18 @@ export function RegisterItemModal({
           </div>
         )}
       </div>
-      <label className="mt-4 block">
-        <span className="mb-1.5 block text-[11.5px] text-sub">옷 이름</span>
+      <label className="flex flex-col gap-1.5 leading-[1.5]">
+        <span className="text-[12px] font-medium text-sub">옷 이름</span>
         <input
           value={name}
           maxLength={20}
           placeholder="예: 베이지 니트"
           onChange={(e) => setName(e.target.value)}
-          className="h-[46px] w-full rounded-lg border border-line bg-cream px-3.5 text-[14px] outline-none placeholder:text-faint focus:border-ink/60"
+          className="w-full rounded-[9px] border border-line bg-cream p-3 text-[14px] outline-none placeholder:text-[#9b9098] focus:border-plum"
         />
       </label>
-      <p className="mt-3 mb-1.5 text-[11.5px] text-sub">종류</p>
+      <div className="flex flex-col gap-1.5">
+      <p className="text-[12px] leading-[1.5] font-medium text-sub">종류</p>
       <div className="grid grid-cols-4 gap-1.5">
         {OPTIONS.map((o) => (
           <button
@@ -79,15 +81,16 @@ export function RegisterItemModal({
             type="button"
             aria-pressed={category === o.id}
             onClick={() => setCategory(o.id)}
-            className={cn("h-9 rounded-md border text-[12px]", category === o.id ? "border-lav bg-lav font-medium" : "border-line bg-white text-sub")}
+            className={cn("h-9 rounded-[7px] border text-[12px] text-plum", category === o.id ? "border-plum bg-lav font-bold" : "border-line bg-white")}
           >
             {o.label}
           </button>
         ))}
       </div>
-      <PrimaryButton className="mt-5" disabled={!name.trim()} onClick={submit}>
+      </div>
+      <SaveButton disabled={!name.trim()} onClick={submit}>
         옷장에 넣기
-      </PrimaryButton>
+      </SaveButton>
     </Modal>
   );
 }

@@ -2,32 +2,31 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, MessageCircle, Star } from "lucide-react";
-import { ClosetIcon, PersonIcon } from "./icons";
 import { cn } from "./ui";
 
+// Figma 하단 내비게이션. 아이콘은 Figma에서 내려받은 원본 SVG입니다 (켜짐: 자주색, 꺼짐: 회색).
 const TABS = [
-  { href: "/chat", label: "채팅", Icon: MessageCircle },
-  { href: "/closet", label: "옷장", Icon: ClosetIcon },
-  { href: "/avatar", label: "아바타", Icon: PersonIcon },
-  { href: "/taste", label: "취향 찾기", Icon: Star },
-  { href: "/calendar", label: "캘린더", Icon: CalendarDays },
+  { href: "/chat", label: "채팅", icon: "chat" },
+  { href: "/closet", label: "옷장", icon: "closet" },
+  { href: "/avatar", label: "아바타", icon: "avatar" },
+  { href: "/taste", label: "취향 찾기", icon: "taste" },
+  { href: "/calendar", label: "캘린더", icon: "calendar" },
 ];
 
 export function TabBar() {
   const pathname = usePathname();
   return (
-    <nav className="pb-tab grid shrink-0 grid-cols-5 border-t border-line bg-cream px-3 pt-3">
-      {TABS.map(({ href, label, Icon }) => {
+    <nav className="pb-safe flex shrink-0 gap-1 border-t border-line bg-cream px-3 pt-3.5">
+      {TABS.map(({ href, label, icon }) => {
         const active = pathname.startsWith(href);
         return (
           <Link
             key={href}
             href={href}
             aria-current={active ? "page" : undefined}
-            className={cn("flex flex-col items-center gap-1 text-[10px]", active ? "font-bold text-plum" : "text-faint")}
+            className={cn("flex flex-1 flex-col items-center gap-[5px] text-[10px] leading-[1.5]", active ? "font-bold text-plum" : "text-sub")}
           >
-            <Icon className="size-[21px]" strokeWidth={active ? 1.9 : 1.5} />
+            <img src={`/icons/tab-${icon}-${active ? "on" : "off"}.svg`} alt="" width={21} height={21} className="block size-[21px]" />
             {label}
           </Link>
         );

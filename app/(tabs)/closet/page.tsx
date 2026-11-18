@@ -2,7 +2,6 @@
 
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowDown, ArrowUp, ArrowUpRight, Plus, Star } from "lucide-react";
 import { ClosetThumb } from "@/components/ClosetThumb";
 import { itemStatus, MeasureModal } from "@/components/MeasureModal";
 import { RegisterItemModal, type NewItemSource } from "@/components/RegisterItemModal";
@@ -14,7 +13,7 @@ const FILTERS = [
   { id: "all", label: "전체", match: () => true },
   { id: "top", label: "상의", match: (i: ClosetItem) => i.category === "top" || i.category === "outer" },
   { id: "bottom", label: "하의", match: (i: ClosetItem) => i.category === "bottom" },
-  { id: "bag", label: "가방", match: (i: ClosetItem) => i.category === "bag" },
+  { id: "bag", label: "ACC", match: (i: ClosetItem) => i.category === "bag" },
 ];
 
 /** 사진을 작게 줄여 브라우저에 저장할 수 있는 형태로 바꿉니다. */
@@ -41,9 +40,9 @@ function shrinkPhoto(file: File) {
 
 function Criterion({ label, item }: { label: string; item?: ClosetItem }) {
   return (
-    <div className={cn("rounded-t-md px-2 py-1.5", label === "상의" ? "bg-sand" : "bg-lav")}>
-      <p className="text-[11.5px] font-bold">{label}</p>
-      <p className="text-[9.5px] text-sub">{!item ? `즐겨찾는 ${label} 없음` : item.confirmed ? "실측 저장 완료" : "실측 확인 필요"}</p>
+    <div className={cn("flex flex-1 flex-col gap-[1.4px] rounded-[5.78px] px-[6.9px] py-[5px] leading-[1.4]", label === "상의" ? "bg-sand" : "bg-lav")}>
+      <p className="text-[12px] font-bold">{label}</p>
+      <p className="text-[10px] text-sub">{!item ? `즐겨찾는 ${label} 없음` : item.confirmed ? "실측 저장 완료" : "실측 확인 필요"}</p>
     </div>
   );
 }
@@ -83,6 +82,8 @@ export default function ClosetPage() {
   }, [app.closet, filter, oldestFirst]);
 
   const openItem = app.closet.find((i) => i.id === openId);
+  // Figma 남성 화면(06 · 남성)은 '사진 촬영하기'(카메라), 여성 화면은 '사진 첨부하기'예요.
+  const male = app.profile.gender === "male";
 
   const onPhoto = async (file?: File) => {
     if (!file) return;
@@ -96,113 +97,127 @@ export default function ClosetPage() {
   return (
     <>
       <TabHeader title="나의 옷장" />
-      <main className="no-scrollbar min-h-0 flex-1 overflow-y-auto px-4 pt-2 pb-4">
-        <section className="rounded-lg bg-lav px-2.5 py-2.5">
-          <h2 className="text-[12px] font-bold">오늘의 옷, 옷장에 넣어볼까요?</h2>
-          <div className="mt-1.5 grid grid-cols-2 gap-1">
-            <button type="button" onClick={() => fileRef.current?.click()} className="flex h-6 items-center justify-center gap-1 rounded-sm bg-white text-[10px]">
-              <Plus className="size-3" /> 사진 촬영하기
+      <main className="no-scrollbar flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 py-3">
+        <section className="flex flex-col gap-[4.26px] rounded-[8.09px] bg-lav px-[9.25px] py-[6.74px]">
+          <h2 className="text-[12px] leading-[1.4] font-bold text-plum">오늘의 옷, 옷장에 넣어볼까요?</h2>
+          <div className="flex gap-[2.84px]">
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="flex-1 rounded-[4.62px] bg-white px-[6.9px] py-[5px] text-center text-[10px] leading-[1.4] font-medium whitespace-pre text-plum"
+            >
+              {male ? "＋  사진 촬영하기" : "＋  사진 첨부하기"}
             </button>
-            <Link href="/closet/link" className="flex h-6 items-center justify-center gap-1 rounded-sm bg-white text-[10px]">
-              <ArrowUpRight className="size-3" /> 판매처 링크 입력
+            <Link
+              href="/closet/link"
+              className="flex-1 rounded-[4.62px] bg-white px-[6.9px] py-[5px] text-center text-[10px] leading-[1.4] font-medium whitespace-pre text-plum"
+            >
+              {"↗  판매처 링크 입력"}
             </Link>
           </div>
           <input
             ref={fileRef}
             type="file"
             accept="image/*"
-            capture="environment"
+            capture={male ? "environment" : undefined}
             hidden
             onChange={(e) => {
               onPhoto(e.target.files?.[0]);
               e.target.value = "";
             }}
           />
-          <p className="mt-1.5 text-[9.5px] leading-[14px] text-sub">
+          <p className="text-[10px] leading-[1.4] text-sub">
             판매처 링크 → 실측 자동 입력
             <br />
             사진 촬영 → 직접 측정 후 입력 (선택)
           </p>
         </section>
 
-        <div className="mt-5 flex items-center justify-between">
-          <h2 className="text-[13px] font-bold">내 옷&nbsp;&nbsp;{app.closet.length}</h2>
-          <button type="button" onClick={() => setOldestFirst((v) => !v)} className="flex items-center gap-1 text-[9.5px] text-sub">
-            {oldestFirst ? "오래된 순" : "최근 등록순"}
-            {oldestFirst ? <ArrowUp className="size-3" strokeWidth={1.4} /> : <ArrowDown className="size-3" strokeWidth={1.4} />}
-          </button>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-start leading-[1.4]">
+            <h2 className="flex-1 text-[14px] font-bold whitespace-pre">{`내 옷  ${app.closet.length}`}</h2>
+            <button type="button" onClick={() => setOldestFirst((v) => !v)} className="text-[10px] whitespace-pre text-sub">
+              {oldestFirst ? "오래된 순  ↑" : "최근 등록순  ↓"}
+            </button>
+          </div>
+
+          <section className="flex flex-col gap-[4.26px] rounded-[8.09px] border-[0.58px] border-line bg-white px-[9.25px] py-[6.74px]">
+            <div className="flex items-start leading-[1.4] font-bold text-plum">
+              <h3 className="flex-1 text-[12px] whitespace-pre">{"★  즐겨찾는 상의 기준"}</h3>
+              <span className="text-[10px]">{top?.confirmed ? 1 : 0} / 1</span>
+            </div>
+            <p className="text-[10px] leading-[1.4] text-sub">
+              즐겨찾는 상의와 하의 각각 1벌 이상,
+              <br />
+              실측을 입력해 나만의 핏 기준을 완성해요.
+            </p>
+            <div className="flex gap-[2.84px]">
+              {[
+                { label: "상의", item: top },
+                { label: "하의", item: bottom },
+              ].map(({ label, item }) => (
+                <button key={label} type="button" disabled={!item} onClick={() => item && setOpenId(item.id)} className="flex flex-1 text-left">
+                  <Criterion label={label} item={item} />
+                </button>
+              ))}
+            </div>
+            {!bothDone && <p className="text-[10px] leading-[1.4] text-warn">실측을 입력하지 않으면 핏 컨설팅과 추천의 정확도가 낮아질 수 있어요.</p>}
+          </section>
         </div>
 
-        <section className="mt-2 rounded-md border border-line bg-white px-2.5 py-2">
-          <div className="flex items-center justify-between text-[11.5px] font-bold">
-            <h3>★ 즐겨찾는 상의 기준</h3>
-            <span className="text-[9.5px]">{top?.confirmed ? 1 : 0} / 1</span>
-          </div>
-          <p className="mt-1 text-[9.5px] leading-[14px] text-sub">
-            즐겨찾는 상의와 하의 각각 1벌 이상,
-            <br />
-            실측을 입력해 나만의 핏 기준을 완성해요.
-          </p>
-          <div className="mt-1 grid grid-cols-2 gap-1">
-            {[
-              { label: "상의", item: top },
-              { label: "하의", item: bottom },
-            ].map(({ label, item }) => (
-              <div key={label}>
-                <Criterion label={label} item={item} />
-                <button
-                  type="button"
-                  disabled={!item}
-                  onClick={() => item && setOpenId(item.id)}
-                  className="mt-1 h-[35px] w-full rounded-sm bg-plum text-[9.5px] font-bold text-white disabled:bg-off disabled:text-sub"
-                >
-                  즐겨찾는 {label} 실측 입력하기
-                </button>
-              </div>
+        <div className="flex flex-col gap-2.5">
+          <div className="flex gap-[2.5px]">
+            {FILTERS.map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                aria-pressed={filter === f.id}
+                onClick={() => setFilter(f.id)}
+                className={cn(
+                  "rounded-[11.56px] border-[0.58px] px-[5.2px] py-[3.8px] text-[10px] leading-[1.4]",
+                  filter === f.id ? "border-plum bg-plum font-medium text-white" : "border-line bg-white text-sub",
+                )}
+              >
+                {f.label}
+              </button>
             ))}
           </div>
-          {!bothDone && <p className="mt-1.5 text-[9.5px] text-warn">실측을 입력하지 않으면 핏 컨설팅과 추천의 정확도가 낮아질 수 있어요.</p>}
-        </section>
 
-        <div className="mt-5 flex gap-1">
-          {FILTERS.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              aria-pressed={filter === f.id}
-              onClick={() => setFilter(f.id)}
-              className={cn("h-[22px] rounded-full border px-2 text-[9.5px]", filter === f.id ? "border-plum bg-plum font-bold text-white" : "border-line bg-white text-sub")}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-2 grid grid-cols-2 gap-x-1 gap-y-4">
-          {visible.map((item) => (
-            <article key={item.id} className="min-w-0">
-              <button type="button" onClick={() => setOpenId(item.id)} aria-label={`${item.name} 실측 열기`} className="mx-auto block">
-                <ClosetThumb item={item} className="h-[70px] w-[81px]" />
-              </button>
-              <div className="mt-1 flex items-center gap-1 pl-1">
-                <button type="button" aria-pressed={item.favorite} aria-label={`${item.name} 즐겨찾기`} onClick={() => updateItem(item.id, { favorite: !item.favorite })} className="p-0.5 text-plum">
-                  <Star className="size-[17px]" strokeWidth={1.4} fill={item.favorite ? "currentColor" : "none"} />
+          <div className="grid grid-cols-2 gap-x-[4.26px] gap-y-2.5">
+            {visible.map((item) => (
+              <article key={item.id} className="flex min-w-0 flex-col items-center gap-[2.13px]">
+                <button type="button" onClick={() => setOpenId(item.id)} aria-label={`${item.name} 실측 열기`} className="block">
+                  <ClosetThumb item={item} className="h-[70.57px] w-[82.09px] rounded-[5.78px]" />
                 </button>
-                <button type="button" onClick={() => setOpenId(item.id)} className="truncate text-[10px] font-medium">
-                  {item.name}
-                </button>
-              </div>
-              <p className="mt-0.5 truncate text-[9.5px] text-sub">{itemStatus(item)}</p>
-            </article>
-          ))}
-          {visible.length === 0 && <p className="col-span-2 py-6 text-center text-[11px] text-sub">이 종류의 옷은 아직 없어요.</p>}
-        </div>
+                <div className="flex w-full items-center gap-1">
+                  <button
+                    type="button"
+                    aria-pressed={item.favorite}
+                    aria-label={`${item.name} 즐겨찾기 등록·해제`}
+                    onClick={() => updateItem(item.id, { favorite: !item.favorite })}
+                    className={cn("flex size-7 shrink-0 items-center justify-center text-[18px] leading-[1.4] font-medium", item.favorite ? "text-plum" : "text-ink")}
+                  >
+                    <span className="w-[18px] text-left">{item.favorite ? "★" : "☆"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOpenId(item.id)}
+                    className={cn("min-w-0 flex-1 truncate text-left text-[10px] leading-[1.4] font-medium", item.favorite ? "text-plum" : "text-ink")}
+                  >
+                    {item.name}
+                  </button>
+                </div>
+                <p className="w-full truncate text-[10px] leading-[1.4] text-sub">{itemStatus(item)}</p>
+              </article>
+            ))}
+            {visible.length === 0 && <p className="col-span-2 py-6 text-center text-[11px] text-sub">이 종류의 옷은 아직 없어요.</p>}
+          </div>
 
-        <p className="mt-3 rounded-md border border-line bg-white px-2.5 py-2 text-[9.5px] leading-[15px] text-sub">
-          <span className="font-medium text-ink">실측은 옷을 눌러 입력·수정할 수 있어요.</span>
-          <br />
-          링크로 불러온 수치도 직접 확인하고 수정해요.
-        </p>
+          <div className="flex flex-col gap-[1.4px] rounded-[5.78px] border-[0.58px] border-line bg-white px-2 py-[5.9px] text-[10px] leading-[1.4]">
+            <p className="font-medium text-plum">실측은 옷을 눌러 입력·수정할 수 있어요.</p>
+            <p className="text-sub">링크로 불러온 수치도 직접 확인하고 수정해요.</p>
+          </div>
+        </div>
       </main>
 
       {openItem && <MeasureModal key={openItem.id} item={openItem} onClose={() => setOpenId(null)} />}

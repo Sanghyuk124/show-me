@@ -4,8 +4,6 @@ import { useEffect, useState, type ComponentProps, type ReactNode } from "react"
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ShoppingCart, X } from "lucide-react";
-import { PersonIcon } from "./icons";
 import { useToast } from "@/lib/store";
 
 export const cn = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(" ");
@@ -25,7 +23,7 @@ export function PrimaryButton({ className, ...props }: ComponentProps<"button">)
       type="button"
       {...props}
       className={cn(
-        "h-[50px] w-full rounded-lg bg-plum text-[13px] font-bold text-white transition active:opacity-85",
+        "w-full rounded-xl bg-plum p-4 text-[14px] leading-[1.5] font-bold text-white transition active:opacity-85",
         "disabled:bg-off disabled:text-sub",
         className,
       )}
@@ -41,8 +39,8 @@ export function useGoBack(fallback: string) {
 export function BackButton({ fallback }: { fallback: string }) {
   const back = useGoBack(fallback);
   return (
-    <button type="button" aria-label="뒤로 가기" onClick={back} className="-ml-1.5 p-1.5">
-      <ChevronLeft className="size-5" strokeWidth={1.6} />
+    <button type="button" aria-label="뒤로 가기" onClick={back} className="shrink-0">
+      <img src="/icons/back.svg" alt="" width={22} height={22} className="block size-[22px]" />
     </button>
   );
 }
@@ -50,23 +48,24 @@ export function BackButton({ fallback }: { fallback: string }) {
 export function TextBack({ fallback }: { fallback: string }) {
   const back = useGoBack(fallback);
   return (
-    <button type="button" onClick={back} className="text-[11px] text-sub">
+    <button type="button" onClick={back} className="text-[12px] leading-[18px] text-sub">
       이전
     </button>
   );
 }
 
+/** 헤더 오른쪽 장바구니·마이페이지 아이콘 (Figma 원본 SVG, 22px 칸) */
 export function HeaderIcons({ cart = true, person = true }: { cart?: boolean; person?: boolean }) {
   return (
-    <div className="flex items-center gap-3.5">
+    <div className="flex items-center gap-3">
       {cart && (
-        <Link href="/cart" aria-label="장바구니">
-          <ShoppingCart className="size-[19px]" strokeWidth={1.6} />
+        <Link href="/cart" aria-label="장바구니" className="relative block size-[22px] shrink-0">
+          <img src="/icons/cart.svg" alt="" width={16.05} height={15.8} className="absolute top-[3.38px] left-[2.97px] block max-w-none" />
         </Link>
       )}
       {person && (
-        <Link href="/mypage" aria-label="마이페이지">
-          <PersonIcon className="size-[21px]" />
+        <Link href="/mypage" aria-label="마이페이지" className="block size-[22px] shrink-0">
+          <img src="/icons/mypage.svg" alt="" width={22} height={22} className="block size-[22px]" />
         </Link>
       )}
     </div>
@@ -75,21 +74,9 @@ export function HeaderIcons({ cart = true, person = true }: { cart?: boolean; pe
 
 export function TabHeader({ title }: { title: string }) {
   return (
-    <header className="pt-safe flex shrink-0 items-center justify-between px-6 pb-2.5">
-      <h1 className="text-[16px] font-bold">{title}</h1>
+    <header className="pt-safe flex shrink-0 items-center gap-3 px-6 pb-3">
+      <h1 className="min-w-0 flex-1 text-[17px] leading-[1.5] font-bold">{title}</h1>
       <HeaderIcons />
-    </header>
-  );
-}
-
-export function StackHeader({ title, left, right }: { title: string; left: ReactNode; right?: ReactNode }) {
-  return (
-    <header className="pt-safe flex shrink-0 items-center justify-between px-6 pb-2.5">
-      <div className="flex items-center gap-3">
-        {left}
-        <h1 className="text-[16px] font-bold">{title}</h1>
-      </div>
-      {right}
     </header>
   );
 }
@@ -99,7 +86,6 @@ export function UnitInput({
   onChange,
   unit,
   placeholder,
-  tone = "white",
   inputMode = "decimal",
   label,
 }: {
@@ -107,32 +93,25 @@ export function UnitInput({
   onChange: (v: string) => void;
   unit: string;
   placeholder?: string;
-  tone?: "white" | "cream" | "lav";
   inputMode?: "decimal" | "numeric";
   label: string;
 }) {
   return (
-    <div
-      className={cn(
-        "flex h-[46px] items-center rounded-lg border border-line px-3.5 transition focus-within:border-ink/60",
-        tone === "white" && "bg-white",
-        tone === "cream" && "bg-cream",
-        tone === "lav" && "bg-[#f3eff2]",
-      )}
-    >
+    <div className="flex h-12 items-center rounded-[9px] border-[0.9px] border-line bg-white px-3.5 transition focus-within:border-plum">
       <input
         aria-label={label}
         value={value}
         placeholder={placeholder}
         inputMode={inputMode}
         onChange={(e) => onChange(e.target.value)}
-        className="w-0 min-w-0 flex-1 bg-transparent text-[14px] outline-none placeholder:text-faint"
+        className="w-0 min-w-0 flex-1 bg-transparent text-[13.7px] leading-[1.4] outline-none placeholder:text-faint"
       />
-      <span className="ml-2 text-[10.5px] text-faint">{unit}</span>
+      <span className="ml-2 text-[11px] leading-[1.4] text-sub">{unit}</span>
     </div>
   );
 }
 
+/** Figma 팝업 창 공통 틀: 흰 배경, 모서리 20, 안쪽 여백 22, 제목 20 + × 닫기 */
 export function Modal({
   title,
   onClose,
@@ -140,6 +119,8 @@ export function Modal({
   align = "top",
   closeLabel,
   hideClose,
+  className = "gap-4 p-[22px]",
+  titleClassName = "text-[20px] leading-[1.5]",
 }: {
   title: string;
   onClose: () => void;
@@ -147,6 +128,9 @@ export function Modal({
   align?: "top" | "center";
   closeLabel?: string;
   hideClose?: boolean;
+  /** 창 안쪽 여백·간격 (화면마다 Figma 값이 조금씩 달라요) */
+  className?: string;
+  titleClassName?: string;
 }) {
   const [root, setRoot] = useState<HTMLElement | null>(null);
   useEffect(() => {
@@ -171,17 +155,20 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="animate-pop no-scrollbar max-h-full w-full overflow-y-auto rounded-2xl bg-white px-[22px] pt-5 pb-5 shadow-[0_6px_30px_rgba(60,40,50,0.08)]"
+        className={cn(
+          "animate-pop no-scrollbar flex max-h-full w-full max-w-[360px] flex-col overflow-y-auto rounded-[20px] bg-white shadow-[0_6px_30px_rgba(60,40,50,0.08)]",
+          className,
+        )}
       >
-        <div className="flex items-center justify-between">
-          <h2 className="text-[19px] font-bold">{title}</h2>
+        <div className="flex items-start gap-2.5">
+          <h2 className={cn("min-w-0 flex-1 font-bold", titleClassName)}>{title}</h2>
           {hideClose ? null : closeLabel ? (
-            <button type="button" onClick={onClose} className="rounded-md border border-line px-2.5 py-1 text-[11px] text-sub">
+            <button type="button" onClick={onClose} className="h-7 w-[42px] shrink-0 rounded-[7px] border border-line bg-white text-[12px] leading-[18px] text-plum">
               {closeLabel}
             </button>
           ) : (
-            <button type="button" aria-label="닫기" onClick={onClose} className="-mr-1 p-1 text-sub">
-              <X className="size-5" strokeWidth={1.5} />
+            <button type="button" aria-label="닫기" onClick={onClose} className="p-[5px] text-[22px] leading-[1.5] text-sub">
+              ×
             </button>
           )}
         </div>

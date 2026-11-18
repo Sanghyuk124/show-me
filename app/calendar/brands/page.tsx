@@ -1,10 +1,10 @@
 "use client";
 
-import { Plus } from "lucide-react";
-import { BackButton, PrimaryButton, StackHeader, useGoBack } from "@/components/ui";
+import { useGoBack } from "@/components/ui";
 import { BRANDS } from "@/lib/data";
 import { setApp, useApp } from "@/lib/store";
 
+/** Figma 09-1 · 관심 브랜드 추가 */
 export default function AddBrandsPage() {
   const { followed } = useApp();
   const back = useGoBack("/calendar");
@@ -12,42 +12,48 @@ export default function AddBrandsPage() {
 
   return (
     <>
-      <StackHeader title="관심 브랜드 추가" left={<BackButton fallback="/calendar" />} />
-      <main className="no-scrollbar animate-rise min-h-0 flex-1 overflow-y-auto px-[18px] pt-5 pb-4">
-        <div className="px-1.5">
-          <h2 className="text-[21px] font-bold">새로운 취향을 만나보세요.</h2>
-          <p className="mt-1.5 text-[11px] text-sub">이미 찜한 브랜드는 목록에서 제외했어요.</p>
+      <header className="pt-safe flex shrink-0 items-center gap-2.5 px-6 pb-2.5">
+        <button type="button" aria-label="목록 닫고 이전 화면" onClick={back} className="flex h-8 w-6 shrink-0 items-center justify-center">
+          <img src="/icons/back-24.svg" alt="" width={24} height={24} className="block size-6" />
+        </button>
+        <h1 className="min-w-0 flex-1 text-[17px] leading-6 font-bold">관심 브랜드 추가</h1>
+      </header>
+      <div className="flex shrink-0 flex-col gap-[9px] px-6 pt-[15px] pb-5">
+        <h2 className="text-[22px] leading-[29px] font-bold">새로운 취향을 만나보세요.</h2>
+        <p className="text-[12px] leading-[19px] text-sub">이미 찜한 브랜드는 목록에서 제외했어요.</p>
+      </div>
+      <main className="no-scrollbar animate-rise flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-[18px] pb-[18px]">
+        <div className="flex h-6 shrink-0 items-center gap-1">
+          <h3 className="flex-1 text-[14px] leading-[21px] font-bold">추가할 수 있는 브랜드</h3>
+          <span className="min-w-3 text-[12px] leading-[19px] font-bold text-plum">{available.length}</span>
+          <span className="w-[13px] text-[12px] leading-[19px] text-sub">개</span>
         </div>
-        <div className="mt-9 flex items-center justify-between">
-          <h3 className="text-[13px] font-bold">추가할 수 있는 브랜드</h3>
-          <span className="text-[10.5px] text-sub">
-            <b className="text-ink">{available.length}</b>&nbsp;&nbsp;개
-          </span>
-        </div>
-        <ul className="mt-3 space-y-2">
+        <ul className="flex flex-col gap-2">
           {available.map((b) => (
-            <li key={b.id} className="flex h-[70px] items-center justify-between rounded-lg border border-line bg-white px-3.5">
-              <div>
-                <p className="text-[13.5px] font-medium">{b.name}</p>
-                <p className="mt-1 text-[9.5px] text-sub">
+            <li key={b.id} className="flex h-[72px] items-center gap-3 rounded-[9px] border border-line bg-white px-3.5 py-3">
+              <div className="flex min-w-0 flex-1 flex-col justify-center gap-[3px]">
+                <p className="text-[14px] leading-[21px] font-bold">{b.name}</p>
+                <p className="text-[10px] leading-[17px] text-sub">
                   {b.en} · {b.type}
                 </p>
               </div>
               <button
                 type="button"
-                aria-label={`${b.name} 추가`}
+                aria-label={`${b.name} 관심 브랜드 추가`}
                 onClick={() => setApp((s) => ({ followed: [...s.followed, b.id] }))}
-                className="flex h-7 items-center gap-0.5 rounded-full border border-line px-3.5 text-[10px] text-sub"
+                className="flex h-7 w-[61px] shrink-0 items-center justify-center rounded-[15px] border-[0.75px] border-line bg-white text-[10px] leading-[1.4] text-sub"
               >
-                <Plus className="size-2.5" /> 추가
+                ＋ 추가
               </button>
             </li>
           ))}
           {available.length === 0 && <li className="py-8 text-center text-[12px] text-sub">모든 브랜드를 담았어요.</li>}
         </ul>
       </main>
-      <div className="pb-safe shrink-0 px-6 pt-2">
-        <PrimaryButton onClick={back}>달력으로 돌아가기</PrimaryButton>
+      <div className="pb-safe shrink-0 px-6 pt-3.5">
+        <button type="button" onClick={back} className="h-11 w-full rounded-lg bg-plum text-[13px] leading-5 font-bold text-white active:opacity-85">
+          달력으로 돌아가기
+        </button>
       </div>
     </>
   );
