@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ComponentProps, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -16,20 +16,6 @@ export function decimal(v: string) {
 }
 export const digits = (v: string, max = 3) => v.replace(/\D/g, "").slice(0, max);
 export const won = (n: number) => `${n.toLocaleString("ko-KR")}원`;
-
-export function PrimaryButton({ className, ...props }: ComponentProps<"button">) {
-  return (
-    <button
-      type="button"
-      {...props}
-      className={cn(
-        "w-full rounded-xl bg-plum p-4 text-[14px] leading-[1.5] font-bold text-white transition active:opacity-85",
-        "disabled:bg-off disabled:text-sub",
-        className,
-      )}
-    />
-  );
-}
 
 export function useGoBack(fallback: string) {
   const router = useRouter();

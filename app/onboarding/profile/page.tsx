@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { OnboardingFrame } from "@/components/OnboardingFrame";
 import { cn, decimal, digits, UnitInput } from "@/components/ui";
 import { GENDER_LABEL, PERSONAL_COLORS, type Gender, type Profile } from "@/lib/data";
@@ -28,13 +27,12 @@ const Label = ({ children }: { children: string }) => <span className="block tex
 
 /** Figma 02 · 나의 기본 정보 */
 export default function ProfileStep() {
-  const router = useRouter();
   const { profile } = useApp();
   const patch = (next: Partial<Profile>) => setApp((s) => ({ profile: { ...s.profile, ...next } }));
   const seasons = PERSONAL_COLORS.filter((c) => c.id !== "unknown");
 
   return (
-    <OnboardingFrame step={1} title="나의 기본 정보" back="/" cta="다음" onNext={() => router.push("/onboarding/concerns")}>
+    <OnboardingFrame step={1} title="나의 기본 정보" back="/" cta="다음" next="/onboarding/concerns">
       <div className="flex flex-col gap-[17px] px-[22px] pt-[16.5px] pb-5">
         <h2 className="text-[24.7px] leading-[1.35] font-bold">
           당신을 조금만

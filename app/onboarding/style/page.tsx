@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { OnboardingFrame } from "@/components/OnboardingFrame";
 import { cn } from "@/components/ui";
 import { STYLE_PHOTOS } from "@/lib/data";
@@ -8,13 +7,12 @@ import { setApp, useApp } from "@/lib/store";
 
 /** Figma 04 · 좋아하는 스타일 */
 export default function StyleStep() {
-  const router = useRouter();
   const { stylePicks, profile } = useApp();
   const toggle = (i: number) =>
     setApp((s) => ({ stylePicks: s.stylePicks.includes(i) ? s.stylePicks.filter((n) => n !== i) : [...s.stylePicks, i] }));
 
   return (
-    <OnboardingFrame step={3} title="좋아하는 스타일" back="/onboarding/concerns" cta="쇼핑메이트와 시작하기" onNext={() => router.push("/chat")}>
+    <OnboardingFrame step={3} title="좋아하는 스타일" back="/onboarding/concerns" cta="쇼핑메이트와 시작하기" next="/chat">
       <div className="flex flex-col gap-[10.2px] px-[18px] pt-[13.5px] pb-4">
         <h2 className="text-[21px] leading-[1.35] font-bold">
           눈길이 가는 스타일을
