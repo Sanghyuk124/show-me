@@ -1,36 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Show Me
 
-## Getting Started
+피그마 프로토타입을 Next.js + Tailwind CSS로 옮긴 모바일 우선 웹앱입니다.
 
-First, run the development server:
+## 실행
+
+Cursor에서 이 폴더를 열고 터미널에 입력합니다.
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+브라우저에서 http://localhost:3000 을 엽니다.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 어디를 고치면 되나요?
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| 바꾸고 싶은 것 | 파일 |
+| --- | --- |
+| 색상·글꼴 | `app/globals.css` 맨 위 |
+| 상품, 브랜드, 세일 일정, 마이페이지 메뉴 | `lib/data.ts` |
+| 쇼핑메이트 답변 (지금은 예시 답변) | `lib/chat.ts` |
+| 화면별 코드 | `app/` 안의 각 폴더 `page.tsx` |
+| 이미지 | `public/images/` |
 
-## Learn More
+## 이미지 교체
 
-To learn more about Next.js, take a look at the following resources:
+지금 이미지는 녹화 영상에서 잘라낸 것이라 화질이 낮습니다.
+피그마에서 원본을 내보낸 뒤 `public/images/`의 같은 파일명(.jpg)으로 덮어쓰면 바로 반영됩니다.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 화면 주소
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| 화면 | 주소 |
+| --- | --- |
+| 시작 | `/` |
+| 온보딩 | `/onboarding/profile`, `/onboarding/concerns`, `/onboarding/style` |
+| 하단 탭 | `/chat`, `/closet`, `/avatar`, `/taste`, `/calendar` |
+| 링크 입력 | `/closet/link`, `/avatar/link` |
+| 관심 브랜드 추가 | `/calendar/brands` |
+| 마이페이지·장바구니 | `/mypage`, `/cart` |
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+입력한 내용은 브라우저에 저장됩니다. 처음 상태로 돌리려면 마이페이지 맨 아래의 `데모 데이터 초기화`를 누르세요.
