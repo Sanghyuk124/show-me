@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { OnboardingFrame } from "@/components/OnboardingFrame";
 import { cn } from "@/components/ui";
 import { CONCERNS } from "@/lib/data";
@@ -8,7 +7,6 @@ import { setApp, useApp } from "@/lib/store";
 
 /** Figma 03 · 패션 고민 선택 */
 export default function ConcernsStep() {
-  const router = useRouter();
   const { concerns, concernNote } = useApp();
   const toggle = (id: string) =>
     setApp((s) => ({ concerns: s.concerns.includes(id) ? s.concerns.filter((c) => c !== id) : [...s.concerns, id] }));
@@ -20,7 +18,7 @@ export default function ConcernsStep() {
       title="패션 고민"
       back="/onboarding/profile"
       cta="다음"
-      onNext={() => router.push("/onboarding/style")}
+      next="/onboarding/style"
       footer={<div className="h-[21px]" />}
     >
       <div className="flex flex-col gap-2.5 px-[23.7px] py-4">

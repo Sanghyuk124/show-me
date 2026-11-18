@@ -1,7 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { BackButton, cn, PrimaryButton } from "./ui";
+import Link from "next/link";
+import { BackButton, cn } from "./ui";
 
 /** 온보딩 3단계 공통 틀 (Figma 02·03·04 화면의 헤더·진행 막대·하단 버튼) */
 export function OnboardingFrame({
@@ -9,7 +10,7 @@ export function OnboardingFrame({
   title,
   back,
   cta,
-  onNext,
+  next,
   footer,
   children,
 }: {
@@ -17,7 +18,8 @@ export function OnboardingFrame({
   title: string;
   back: string;
   cta: string;
-  onNext: () => void;
+  /** 다음 화면 주소. 링크라서 JS가 늦게 떠도 눌러서 넘어갈 수 있어요. */
+  next: string;
   /** 버튼 아래 문구 (예: 건너뛰기) */
   footer?: ReactNode;
   children: ReactNode;
@@ -38,7 +40,12 @@ export function OnboardingFrame({
       </header>
       <main className="no-scrollbar animate-rise min-h-0 flex-1 overflow-y-auto">{children}</main>
       <div className="pb-safe flex shrink-0 flex-col gap-3 px-6 pt-3">
-        <PrimaryButton onClick={onNext}>{cta}</PrimaryButton>
+        <Link
+          href={next}
+          className="block w-full rounded-xl bg-plum p-4 text-center text-[14px] leading-[1.5] font-bold text-white transition active:opacity-85"
+        >
+          {cta}
+        </Link>
         {footer}
       </div>
     </>
