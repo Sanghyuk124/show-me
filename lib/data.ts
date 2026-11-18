@@ -186,7 +186,7 @@ export const BRANDS: Brand[] = [
 export const SALE_EVENTS: SaleEvent[] = [
   { id: "c1", brand: "브랜드 C", title: "얼리 윈터 세일", start: "2026-11-01", end: "2026-11-08", place: "온라인", listPlace: "온라인", desc: "겨울 신상품 최대 25% 할인", discount: "최대 25%" },
   { id: "matin", brand: "마뗑킴", brandId: "matin", title: "멤버스 세일", start: "2026-11-10", end: "2026-11-14", place: "공식 온라인 스토어", listPlace: "온라인", desc: "가방과 겨울 컬렉션 최대 20% 할인", discount: "최대 20%" },
-  { id: "a", brand: "브랜드 A", brandId: "a", title: "시즌오프 세일", start: "2026-11-16", end: "2026-11-22", place: "온라인", listPlace: "온라인", desc: "시즌오프 상품 최대 30% 할인", discount: "최대 30%" },
+  { id: "a", brand: "무신사 스탠다드", brandId: "a", title: "시즌 세일", start: "2026-11-16", end: "2026-11-22", place: "공식 온라인 스토어", listPlace: "온라인", desc: "겨울 아우터와 니트 최대 40% 할인", discount: "최대 40%" },
   { id: "b", brand: "브랜드 B", brandId: "b", title: "쇼룸 아카이브 세일", start: "2026-11-19", end: "2026-11-21", place: "오프라인 · 성수", listPlace: "오프라인 · 성수", desc: "아카이브 상품 최대 40% 할인", discount: "최대 40%" },
   { id: "d", brand: "브랜드 D", title: "팝업 스토어", start: "2026-11-24", end: "2026-11-26", place: "오프라인 · 한남", listPlace: "오프라인 · 한남", desc: "겨울 신상품을 먼저 만나보는 팝업" },
   { id: "mardi", brand: "마르디 메크르디", brandId: "mardi", title: "블랙프라이데이", start: "2026-11-27", end: "2026-11-30", place: "공식 온라인 스토어", listPlace: "온라인", desc: "플라워 컬렉션 및 스웨트 최대 35% 할인", discount: "최대 35%" },
