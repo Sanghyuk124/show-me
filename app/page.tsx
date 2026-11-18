@@ -1,7 +1,12 @@
+"use client";
+
 import Link from "next/link";
+import { useApp } from "@/lib/store";
 
 /** Figma 01 · Show Me 랜딩 */
 export default function SplashPage() {
+  // 처음 온 사용자는 온보딩(02~04)으로, 이미 끝낸 사용자는 바로 채팅으로 갑니다.
+  const { onboarded } = useApp();
   return (
     <main className="flex h-full flex-col">
       <header className="pt-safe flex shrink-0 items-center gap-3 px-6 pb-3 leading-[1.5]">
@@ -24,7 +29,7 @@ export default function SplashPage() {
 
       <div className="pb-safe flex shrink-0 flex-col gap-3 px-6 pt-3">
         <Link
-          href="/onboarding/profile"
+          href={onboarded ? "/chat" : "/onboarding/profile"}
           className="block rounded-xl bg-plum p-4 text-center text-[14px] leading-[1.5] font-bold text-white active:opacity-85"
         >
           나의 쇼핑메이트 만나기
