@@ -178,7 +178,7 @@ export const BRANDS: Brand[] = [
   { id: "gentle", name: "젠틀몬스터", en: "GENTLE MONSTER", type: "아이웨어" },
   { id: "tamburins", name: "탬버린즈", en: "TAMBURINS", type: "뷰티" },
   { id: "nonfiction", name: "논픽션", en: "NONFICTION", type: "라이프스타일" },
-  { id: "a", name: "브랜드 A", en: "BRAND A", type: "예시" },
+  { id: "a", name: "무신사 스탠다드", en: "MUSINSA STANDARD", type: "패션" },
   { id: "b", name: "브랜드 B", en: "BRAND B", type: "예시" },
 ];
 
