@@ -10,8 +10,8 @@ import { setApp, useApp, type ChatMessage } from "@/lib/store";
 
 const OUTFIT = [
   { id: "shirt", label: "셔츠", name: "아이보리 셔츠", src: "/images/closet/shirt.jpg" },
-  { id: "cardigan", label: "가디건", name: "네이비 가디건", src: "/images/closet/cardigan.jpg" },
   { id: "slacks", label: "슬랙스", name: "블랙 슬랙스", src: "/images/closet/slacks.jpg" },
+  { id: "cardigan", label: "가디건", name: "네이비 가디건", src: "/images/closet/cardigan.jpg" },
 ];
 const newId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const FIRST_CHIPS = ["자유로운 편이에요", "아직 잘 모르겠어요"];
