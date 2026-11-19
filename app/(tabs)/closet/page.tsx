@@ -7,6 +7,7 @@ import { itemStatus, MeasureModal } from "@/components/MeasureModal";
 import { RegisterItemModal, type NewItemSource } from "@/components/RegisterItemModal";
 import { cn, Modal, TabHeader } from "@/components/ui";
 import type { ClosetItem } from "@/lib/data";
+import { shrinkPhoto } from "@/lib/media";
 import { setApp, showToast, updateItem, useApp } from "@/lib/store";
 
 const FILTERS = [
@@ -15,28 +16,6 @@ const FILTERS = [
   { id: "bottom", label: "하의", match: (i: ClosetItem) => i.category === "bottom" },
   { id: "bag", label: "ACC", match: (i: ClosetItem) => i.category === "bag" },
 ];
-
-/** 사진을 작게 줄여 브라우저에 저장할 수 있는 형태로 바꿉니다. */
-function shrinkPhoto(file: File) {
-  return new Promise<string>((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      const scale = Math.min(1, 480 / Math.max(img.width, img.height));
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
-      canvas.getContext("2d")?.drawImage(img, 0, 0, canvas.width, canvas.height);
-      URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL("image/jpeg", 0.78));
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("이미지를 읽을 수 없어요"));
-    };
-    img.src = url;
-  });
-}
 
 function Criterion({ label, item }: { label: string; item?: ClosetItem }) {
   return (

@@ -8,6 +8,8 @@ import type { ChatContext, ChatTurn } from "@/lib/chat";
 const MODEL = "claude-sonnet-5-5"; // 주최측 가이드 권장: 평소에는 Sonnet 5.5
 const MAX_TURNS = 20; // 최근 대화만 보내요
 const MAX_CHARS = 2000; // 메시지 하나당 최대 글자 수
+const MAX_IMAGES = 8; // 한 번에 보내는 첨부 사진 최대 장수
+const JPEG_DATA_URL = /^data:image\/jpeg;base64,([A-Za-z0-9+/=]+)$/;
 
 const SYSTEM = `당신은 패션 쇼핑 앱 'Show Me'의 쇼핑메이트입니다.
 사용자가 유행보다 '나다운' 옷을 고를 수 있게 돕는 친근한 스타일 조언자예요.
@@ -18,6 +20,7 @@ const SYSTEM = `당신은 패션 쇼핑 앱 'Show Me'의 쇼핑메이트입니�
 - 새 옷을 사라고 권하기 전에 사용자의 옷장에 있는 옷부터 활용하는 방법을 먼저 제안해요.
 - 사이즈·핏 질문에는 옷장에 저장된 실측과 신체 치수를 근거로 이야기하고, 값이 없으면 어떤 치수를 재면 좋을지 알려줘요.
 - 확실하지 않은 정보(가격, 재고, 세일 일정 등)는 지어내지 말고 확인이 필요하다고 말해요.
+- 사용자가 사진을 보내면 사진 속 옷의 색·핏·소재를 짚어 주고, 옷장의 옷과 어떻게 맞출지 제안해요. 여러 장이 영상에서 뽑은 장면일 수도 있어요.
 - 패션과 관련 없는 요청에는 정중하게 쇼핑·코디 이야기로 돌아와요.`;
 
 /** 앱에 저장된 사용자 정보를 Claude가 읽기 좋은 글로 바꿉니다. */
@@ -59,10 +62,31 @@ export async function POST(request: Request) {
     return Response.json({ error: "bad_request" }, { status: 400 });
   }
 
-  const messages: Anthropic.Beta.BetaMessageParam[] = history.slice(-MAX_TURNS).map((t) => ({
-    role: t.role === "user" ? "user" : "assistant",
-    content: String(t.text).slice(0, MAX_CHARS),
-  }));
+  // 첨부 사진은 최근 것부터 최대 MAX_IMAGES장만 보내요 (오래된 사진은 글만 남겨요).
+  let imageBudget = MAX_IMAGES;
+  const turns = history.slice(-MAX_TURNS);
+  const messages: Anthropic.Beta.BetaMessageParam[] = [...turns]
+    .reverse()
+    .map((t) => {
+      const text = String(t.text ?? "").slice(0, MAX_CHARS);
+      if (t.role !== "user") return { role: "assistant" as const, content: text || "(빈 답변)" };
+      const photos = (Array.isArray(t.images) ? t.images : [])
+        .map((src) => JPEG_DATA_URL.exec(String(src))?.[1])
+        .filter((d): d is string => !!d);
+      const kept = photos.slice(0, Math.max(0, imageBudget));
+      imageBudget -= kept.length;
+      const content: Anthropic.Beta.BetaContentBlockParam[] = kept.map((data) => ({
+        type: "image",
+        source: { type: "base64", media_type: "image/jpeg", data },
+      }));
+      const dropped = photos.length - kept.length;
+      content.push({
+        type: "text",
+        text: (text || "(사진만 보냈어요)") + (dropped > 0 ? `\n(앞서 보낸 사진 ${dropped}장은 생략)` : ""),
+      });
+      return { role: "user" as const, content };
+    })
+    .reverse();
   // 대화는 반드시 사용자 메시지로 시작해야 해요.
   while (messages.length && messages[0].role !== "user") messages.shift();
   if (!messages.length) return Response.json({ error: "bad_request" }, { status: 400 });

@@ -14,7 +14,12 @@ export interface Reply {
 export interface ChatTurn {
   role: "user" | "bot";
   text: string;
+  /** 사용자가 첨부한 사진 (작게 줄인 JPEG data URL) */
+  images?: string[];
 }
+
+/** 채팅 첫 화면의 예시 대화 아래 추천 답변 */
+export const FIRST_CHIPS = ["자유로운 편이에요", "아직 잘 모르겠어요"];
 
 /** 서버로 보내는 사용자 정보 (Claude가 맞춤 답변에 참고해요) */
 export interface ChatContext {
@@ -27,7 +32,8 @@ export interface ChatContext {
   closet: Pick<ClosetItem, "name" | "category" | "favorite" | "size" | "measures">[];
 }
 
-// 채팅 화면 맨 위에 고정으로 보이는 첫 상담. Claude도 이 대화를 이어서 답하도록 함께 보내요.
+// 채팅 첫 화면의 예시 상담. 첫 메시지를 보내면 화면에서는 사라지지만,
+// 예시 아래 추천 답변(FIRST_CHIPS)으로 대화를 시작했다면 Claude가 이어서 답하도록 함께 보내요.
 const FIRST_EXCHANGE: ChatTurn[] = [
   { role: "user", text: "다음 주 첫 출근인데 뭘 입어야 할까?\n너무 격식 차린 느낌은 싫어." },
   {
@@ -56,23 +62,39 @@ function buildContext(app: AppState): ChatContext {
 }
 
 /** 메시지를 보내면 답변을 돌려줍니다. Claude 연결이 안 되어 있으면 예시 답변을 써요. */
-export async function getReply(message: string, app: AppState): Promise<Reply> {
-  const history: ChatTurn[] = [...FIRST_EXCHANGE, ...app.chat.map((m) => ({ role: m.role, text: m.text })), { role: "user", text: message }];
+export async function getReply(message: string, images: string[], app: AppState): Promise<Reply> {
+  const firstUserText = app.chat.find((m) => m.role === "user")?.text ?? message;
+  const fromExample = FIRST_CHIPS.includes(firstUserText);
+  const history: ChatTurn[] = [
+    ...(fromExample ? FIRST_EXCHANGE : []),
+    ...app.chat.map((m) => ({ role: m.role, text: m.text, images: m.images })),
+    { role: "user", text: message, images },
+  ];
+  const fallback = () => (images.length ? attachmentReply() : cannedReply(message, app));
   try {
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ history, context: buildContext(app) }),
     });
-    if (res.status === 503) return cannedReply(message, app); // API 키가 아직 없어요
+    if (res.status === 503) return fallback(); // API 키가 아직 없어요
     if (res.status === 429) return { text: "지금 질문이 많아서 잠시 후에 다시 답해 드릴게요." };
     if (!res.ok) return { text: "답변을 가져오지 못했어요. 잠시 후 다시 시도해 주세요." };
     const data: { text?: string } = await res.json();
     return { text: data.text ?? "답변을 가져오지 못했어요. 잠시 후 다시 시도해 주세요." };
   } catch {
     // 서버에 연결할 수 없을 때(오프라인 등)도 예시 답변으로 대신해요.
-    return cannedReply(message, app);
+    return fallback();
   }
+}
+
+/** API 키가 없을 때 첨부 사진에 대한 안내 */
+async function attachmentReply(): Promise<Reply> {
+  await new Promise((r) => setTimeout(r, 700));
+  return {
+    text: "사진을 잘 받았어요. 지금은 AI가 연결되지 않아 사진 속 옷을 볼 수 없어요.\n어떤 옷인지 글로 알려주시면 옷장에 있는 옷과 함께 코디를 골라볼게요.",
+    chips: ["다른 코디도 볼래요", "사이즈가 고민돼요"],
+  };
 }
 
 /** API 키가 없을 때 쓰는 미리 써둔 예시 답변 (보낸 글의 단어를 보고 골라요) */
