@@ -37,7 +37,7 @@ export default function ClosetLinkPage() {
     );
   };
 
-  // 저장하면 링크에서 옷 사진(누끼)·이름, 미리 세팅한 링크면 실측까지 가져와요 (lib/linkImport.ts)
+  // 저장하면 링크에서 옷 사진·이름, 미리 세팅한 링크면 실측까지 가져와요 (lib/linkImport.ts)
   const save = async () => {
     if (busy) return;
     if (!link) return showToast("판매처 상품 링크를 입력해 주세요.");

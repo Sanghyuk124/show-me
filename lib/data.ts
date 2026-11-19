@@ -1,6 +1,8 @@
 // 앱에 들어가는 문구·예시 데이터를 모아둔 파일입니다.
 // 상품, 브랜드, 세일 일정을 바꾸고 싶으면 이 파일만 수정하세요.
 
+import { DEMO_GARMENTS } from "./demoGarments";
+
 export type Gender = "female" | "male";
 export type PersonalColor = "spring" | "summer" | "autumn" | "winter" | "unknown";
 export type Category = "top" | "outer" | "bottom" | "bag";
@@ -33,6 +35,10 @@ export interface ClosetItem {
   cutout?: boolean;
   /** 앱 안 '사진 보관함'의 예시 사진으로 등록했으면 그 사진 이름 (SAMPLE_PHOTOS의 id) */
   sample?: string;
+  /** 시연용 옷이면 그 이름 (lib/demoGarments.ts) → 2D 입어보기에서 기준점에 맞춰 펴 입혀요 */
+  demo?: string;
+  /** 이 성별 사용자에게만 보여요 (예시 옷). 비어 있으면 모두에게 */
+  gender?: Gender;
   /**
    * 아바타에 입힐 옷 모양 (없으면 이름·카테고리·소매 길이로 자동으로 골라요)
    * tee: 티셔츠·니트 / shirt: 셔츠·블라우스 / jacket: 재킷·아우터 / pants: 긴바지 / skirt: 스커트 / shorts: 반바지
@@ -95,13 +101,13 @@ export const CONCERNS = [
  * 사진을 누르면 배경을 지워(누끼) 아래 이름·종류로 옷장에 바로 들어가요.
  * 사진 파일: public/demo-photos/ · 더하려면 같은 형식으로 한 줄 넣으면 돼요.
  */
-export const SAMPLE_PHOTOS: Record<Gender, { id: string; name: string; category: Category; src: string }[]> = {
+export const SAMPLE_PHOTOS: Record<Gender, { id: string; name: string; category: Category; src: string; demo?: string }[]> = {
   female: [
     { id: "women-cardigan", name: "아이보리 가디건", category: "outer", src: "/demo-photos/women-cardigan.jpg" },
     { id: "women-denim", name: "블루 스트레이트 데님", category: "bottom", src: "/demo-photos/women-denim.jpg" },
   ],
   male: [
-    { id: "men-knit", name: "네이비 UCLA 니트", category: "top", src: "/demo-photos/men-knit.jpg" },
+    { id: "men-knit", name: "네이비 UCLA 니트", category: "top", src: "/demo-photos/men-knit.jpg", demo: "m-knit" },
     { id: "men-denim", name: "블랙 벌룬 데님", category: "bottom", src: "/demo-photos/men-denim.jpg" },
   ],
 };
@@ -258,6 +264,7 @@ export const CLOSET_SEED: ClosetItem[] = [
     category: "top",
     source: "photo",
     image: "/images/closet/shirt.jpg",
+    gender: "female",
     favorite: true,
     confirmed: false,
     measures: {},
@@ -268,6 +275,7 @@ export const CLOSET_SEED: ClosetItem[] = [
     category: "outer",
     source: "link",
     image: "/images/closet/cardigan.jpg",
+    gender: "female",
     favorite: false,
     confirmed: false,
     measures: {},
@@ -278,6 +286,7 @@ export const CLOSET_SEED: ClosetItem[] = [
     category: "bottom",
     source: "link",
     image: "/images/closet/slacks.jpg",
+    gender: "female",
     favorite: true,
     prefilled: true,
     confirmed: false,
@@ -290,10 +299,28 @@ export const CLOSET_SEED: ClosetItem[] = [
     category: "bag",
     source: "photo",
     image: "/images/closet/tote.jpg",
+    gender: "female",
     favorite: false,
     confirmed: false,
     measures: {},
   },
+  // ── 남성 시연 세트 (lib/demoGarments.ts) ──
+  ...(["m-tee", "m-pants", "m-jacket"] as const).map((id) => {
+    const g = DEMO_GARMENTS[id];
+    return {
+      id: `demo-${id}`,
+      name: g.name,
+      category: g.category,
+      source: "photo" as const,
+      image: g.image,
+      cutout: true,
+      demo: id,
+      gender: g.gender,
+      favorite: false,
+      confirmed: true,
+      measures: g.measures,
+    };
+  }),
 ];
 
 /**
