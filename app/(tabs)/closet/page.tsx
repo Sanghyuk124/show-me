@@ -119,8 +119,6 @@ export default function ClosetPage() {
   }, [app.closet, filter, oldestFirst]);
 
   const openItem = app.closet.find((i) => i.id === openId);
-  // Figma 남성 화면(06 · 남성)은 '사진 촬영하기'(카메라), 여성 화면은 '사진 첨부하기'예요.
-  const male = app.profile.gender === "male";
 
   // 사진을 고르면: 작게 줄이고 → 배경을 지워(누끼) → 이름·종류를 확인하고 옷장에 넣어요
   const onPhoto = async (file?: File) => {
@@ -151,7 +149,7 @@ export default function ClosetPage() {
               disabled={cutting}
               className="flex-1 rounded-[4.62px] bg-white px-[6.9px] py-[5px] text-center text-[10px] leading-[1.4] font-medium whitespace-pre text-plum"
             >
-              {cutting ? "누끼 따는 중…" : male ? "＋  사진 촬영하기" : "＋  사진 첨부하기"}
+              {cutting ? "누끼 따는 중…" : "＋  사진 첨부하기"}
             </button>
             <Link
               href="/closet/link"
@@ -173,7 +171,7 @@ export default function ClosetPage() {
           <p className="text-[10px] leading-[1.4] text-sub">
             판매처 링크 → 실측 자동 입력
             <br />
-            사진 촬영 → 직접 측정 후 입력 (선택)
+            사진 첨부 → 직접 측정 후 입력 (선택)
           </p>
         </section>
 
