@@ -108,9 +108,9 @@ function load() {
         ...state,
         closet: state.closet
           .filter((i) => !i.id.startsWith("demo-") || seedIds.has(i.id))
-          .map((i) => (i.id.startsWith("demo-") ? { ...i, ...CLOSET_SEED.find((c) => c.id === i.id)!, favorite: i.favorite } : i)),
+          .map((i) => (i.id.startsWith("demo-") ? { ...i, ...CLOSET_SEED.find((c) => c.id === i.id)!, favorite: i.favorite, measures: { ...CLOSET_SEED.find((c) => c.id === i.id)!.measures, ...i.measures }, confirmed: i.confirmed || !!CLOSET_SEED.find((c) => c.id === i.id)!.confirmed } : i)),
       };
-      const missing = CLOSET_SEED.filter((c) => c.demo && !state.closet.some((i) => i.id === c.id));
+      const missing = CLOSET_SEED.filter((c) => c.id.startsWith("demo-") && !state.closet.some((i) => i.id === c.id));
       if (missing.length) state = { ...state, closet: [...state.closet, ...missing] };
       // 예전 기본 옷에는 성별 표시가 없었어요 → 예시 옷 정보로 맞춰요
       state = { ...state, closet: state.closet.map((i) => (i.gender ? i : { ...i, gender: CLOSET_SEED.find((c) => c.id === i.id)?.gender })) };
