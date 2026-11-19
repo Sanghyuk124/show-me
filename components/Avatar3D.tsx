@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import type { BodyShape } from "@/lib/bodyModel";
 import { loadAvatarModel, shapeAvatar, type AvatarModel } from "@/lib/avatarModel";
+import { buildGarment, type FitLine, type GarmentMesh, type GarmentSpec } from "@/lib/garment";
 import { cn } from "./ui";
 
 // 피부·속옷 색 (Figma 프로토타입의 아바타 이미지 참고)
@@ -131,9 +132,36 @@ const VIEWS = [
 
 /* ───────── 화면 컴포넌트 ───────── */
 
-export function Avatar3D({ shape, className, controls = true }: { shape: BodyShape; className?: string; controls?: boolean }) {
+export interface GarmentReport {
+  name: string;
+  kind: GarmentSpec["kind"];
+  lines: FitLine[];
+}
+
+export function Avatar3D({
+  shape,
+  className,
+  controls = true,
+  garments = [],
+  fitView = false,
+  onReport,
+}: {
+  shape: BodyShape;
+  className?: string;
+  controls?: boolean;
+  /** 입혀 볼 옷 (lib/garment.ts) */
+  garments?: GarmentSpec[];
+  /** true면 옷 색 대신 부위별 핏 색 (끼어요·딱 붙어요·잘 맞아요·넉넉해요) */
+  fitView?: boolean;
+  onReport?: (r: GarmentReport[]) => void;
+}) {
   const boxRef = useRef<HTMLDivElement>(null);
-  const api = useRef<{ setBody: (s: BodyShape) => void; setView: (rot: number) => void } | null>(null);
+  type Scene = { shape: BodyShape; garments: GarmentSpec[]; fitView: boolean };
+  const api = useRef<{ setBody: (s: Scene) => void; setView: (rot: number) => void } | null>(null);
+  const reportRef = useRef(onReport);
+  useEffect(() => {
+    reportRef.current = onReport;
+  }, [onReport]);
   const [failed, setFailed] = useState(false);
   const [view, setView] = useState(0);
 
@@ -169,6 +197,16 @@ export function Avatar3D({ shape, className, controls = true }: { shape: BodySha
     scene.add(root);
     let body: (ReturnType<typeof createBody> & { gender: BodyShape["gender"] }) | null = null;
     let disposed = false;
+    const clothes = new THREE.Group();
+    root.add(clothes);
+    const clearClothes = () => {
+      for (const c of [...clothes.children]) {
+        const m = c as THREE.Mesh;
+        m.geometry.dispose();
+        (m.material as THREE.Material).dispose();
+        clothes.remove(m);
+      }
+    };
     let frameH = 180;
     let rot = 0;
     let target = 0;
@@ -200,7 +238,7 @@ export function Avatar3D({ shape, className, controls = true }: { shape: BodySha
       body.group.traverse((o) => ((o as THREE.Mesh).material as THREE.Material | undefined)?.dispose());
       body = null;
     };
-    const rebuild = async (s: BodyShape) => {
+    const rebuild = async ({ shape: s, garments: wear, fitView: heat }: Scene) => {
       const ticket = ++latest;
       let model: AvatarModel;
       try {
@@ -220,6 +258,29 @@ export function Avatar3D({ shape, className, controls = true }: { shape: BodySha
       body.body.computeVertexNormals();
       body.eyes.computeVertexNormals();
       body.body.computeBoundingSphere();
+
+      // 옷 입히기: 몸 둘레에 옷 단면을 걸쳐 옷 표면을 만들어요 (lib/garment.ts)
+      clearClothes();
+      const reports: GarmentReport[] = [];
+      // 하의를 먼저 입히고 상의를 위에 (상의가 바지 허리를 덮도록 조금 더 띄워요)
+      const ordered = [...wear].sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "bottom" ? -1 : 1));
+      let bottomMesh: GarmentMesh | undefined;
+      for (const spec of ordered) {
+        const gm = buildGarment(model, body.position.array as Float32Array, spec, spec.kind === "top" ? bottomMesh : undefined);
+        if (spec.kind === "bottom") bottomMesh = gm;
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute("position", new THREE.BufferAttribute(gm.positions, 3));
+        geo.setAttribute("color", new THREE.BufferAttribute(gm.heat, 3));
+        geo.setIndex(new THREE.BufferAttribute(gm.index, 1));
+        geo.computeVertexNormals();
+        const mat = heat
+          ? new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide })
+          : new THREE.MeshStandardMaterial({ color: spec.color, roughness: 0.88, side: THREE.DoubleSide });
+        clothes.add(new THREE.Mesh(geo, mat));
+        reports.push({ name: spec.name, kind: spec.kind, lines: gm.report });
+      }
+      reportRef.current?.(reports);
+
       frameH = Math.max(s.height, 175) + 8;
       fit();
     };
@@ -271,6 +332,7 @@ export function Avatar3D({ shape, className, controls = true }: { shape: BodySha
       clearTimeout(pending);
       ro.disconnect();
       disposed = true;
+      clearClothes();
       disposeBody();
       scene.traverse((o) => {
         const m = o as THREE.Mesh;
@@ -288,7 +350,7 @@ export function Avatar3D({ shape, className, controls = true }: { shape: BodySha
   }, []);
 
   // 치수가 바뀌면 바로 몸 모양을 다시 만들어요.
-  const key = JSON.stringify(shape);
+  const key = JSON.stringify({ shape, garments, fitView });
   useEffect(() => {
     api.current?.setBody(JSON.parse(key));
   }, [key]);

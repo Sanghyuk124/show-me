@@ -34,6 +34,8 @@ export interface AvatarModel {
   eyeIndex: Uint32Array;
   /** 정점이 팔에 속하는 정도 (0~255). 팔에는 속옷을 칠하지 않아요 */
   armF: Uint8Array;
+  /** 정점이 다리에 속하는 정도 (0~255). 바지 다리 부분에 써요 */
+  legF: Uint8Array;
   /** 기본 몸에서의 가슴·허리·엉덩이 등 높이 (속옷 칠하기용, cm) */
   landmarks: Record<string, number>;
   morphs: Record<string, { idx: Uint32Array; d: Float32Array }>;
@@ -92,6 +94,7 @@ function parse(buf: ArrayBuffer): AvatarModel {
     index: get("index") as Uint32Array,
     eyeIndex: get("eyeIndex") as Uint32Array,
     armF: get("armF") as Uint8Array,
+    legF: get("legF") as Uint8Array,
     landmarks: header.landmarks,
     morphs,
     rulers: header.rulers,

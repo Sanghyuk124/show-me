@@ -6,14 +6,16 @@ import { GENDER_LABEL } from "@/lib/data";
 import { updateItem, useApp } from "@/lib/store";
 import { cn, decimal, Modal } from "./ui";
 
-const UPPER = [
+// optional: 비워도 저장할 수 있는 항목 (가슴 둘레는 아바타에 옷을 입혀 볼 때 핏을 더 정확하게 보여줘요)
+const UPPER: { key: string; label: string; optional?: boolean }[] = [
   { key: "length", label: "총 기장" },
+  { key: "chest", label: "가슴 둘레 (선택)", optional: true },
   { key: "sleeve", label: "팔 길이" },
   { key: "shoulder", label: "어깨 너비" },
   { key: "waist", label: "허리 둘레" },
 ];
 
-export const COPY: Record<Category, { label: string; fields: { key: string; label: string }[] }> = {
+export const COPY: Record<Category, { label: string; fields: { key: string; label: string; optional?: boolean }[] }> = {
   top: { label: "상의", fields: UPPER },
   outer: { label: "아우터", fields: UPPER },
   bottom: {
@@ -81,7 +83,7 @@ export function MeasureModal({ item, onClose }: { item: ClosetItem; onClose: () 
   const [draft, setDraft] = useState<Measures>(item.measures);
   const copy = COPY[item.category];
   const g = guide(item);
-  const complete = copy.fields.every((f) => draft[f.key]?.trim());
+  const complete = copy.fields.every((f) => f.optional || draft[f.key]?.trim());
   const save = () => {
     updateItem(item.id, { measures: draft, confirmed: true });
     onClose();
