@@ -4,6 +4,7 @@
 // 브라우저(localStorage)에 저장되어 새로고침해도 입력한 내용이 유지됩니다.
 
 import { useSyncExternalStore } from "react";
+import type { LinkImport } from "./linkImport";
 import {
   BODY_SEED,
   CART_SEED,
@@ -47,7 +48,8 @@ export interface AppState {
   tryOnLink: string;
   /** 아바타에 입혀 보는 옷 (옷장 옷 id) */
   wearing: { top?: string; bottom?: string };
-  pendingLink: { url: string; size: string } | null;
+  /** 판매처 링크 화면에서 저장한 링크·사이즈와, 링크에서 가져온 옷 사진·이름·실측 (옷장 화면에서 등록 창을 열어요) */
+  pendingLink: ({ url: string; size: string } & LinkImport) | null;
   followed: string[];
   saleAlert: boolean;
   selectedDate: string;

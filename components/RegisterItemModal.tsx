@@ -23,6 +23,10 @@ export interface NewItemSource {
   aiImage?: string;
   /** image가 배경을 지운 사진인지 */
   cutout?: boolean;
+  /** 판매처 링크에서 가져온 상품명·종류·실측 (미리 세팅한 링크면 실측까지) */
+  name?: string;
+  category?: Category;
+  measures?: Record<string, string>;
   link?: string;
   size?: string;
 }
@@ -37,13 +41,13 @@ export function RegisterItemModal({
   onClose: () => void;
   onCreated: (item: ClosetItem) => void;
 }) {
-  const [name, setName] = useState("");
-  const [category, setCategory] = useState<Category | null>(null);
-  const [picked, setPicked] = useState(false); // 사용자가 직접 종류를 골랐는지
+  const [name, setName] = useState(source.name ?? "");
+  const [category, setCategory] = useState<Category | null>(source.category ?? null);
+  const [picked, setPicked] = useState(!!source.category); // 사용자가 직접 종류를 골랐는지 (판매처에서 정해진 종류도 그대로 둬요)
   const [suggestion, setSuggestion] = useState<ClassifyResult | null>(null);
   const [busy, setBusy] = useState(true); // 창이 열리자마자 분류를 시작해요
   const run = useRef(0);
-  const pickedRef = useRef(false); // 분류 결과가 늦게 와도 직접 고른 종류를 덮어쓰지 않게
+  const pickedRef = useRef(!!source.category); // 분류 결과가 늦게 와도 직접 고른 종류를 덮어쓰지 않게
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const apply = (id: number, result: ClassifyResult) => {
@@ -89,7 +93,9 @@ export function RegisterItemModal({
       size: source.size,
       favorite: false,
       confirmed: false,
-      measures: {},
+      measures: source.measures ?? {},
+      // 판매처 실측을 불러왔으면 '확인 필요' 상태로 (실측 창에서 확인·수정)
+      prefilled: source.measures ? true : undefined,
     };
     setApp((s) => ({ closet: [item, ...s.closet] }));
     onCreated(item);
@@ -98,7 +104,9 @@ export function RegisterItemModal({
   const hint = busy
     ? "종류를 분류하고 있어요…"
     : picked
-      ? "직접 고른 종류로 넣을게요."
+      ? source.category && category === source.category
+        ? "판매처 정보로 종류를 정했어요. 다르면 직접 골라 주세요."
+        : "직접 고른 종류로 넣을게요."
       : suggestion?.by === "ai" && category
         ? "AI가 사진·이름을 보고 분류했어요. 다르면 직접 골라 주세요."
         : category

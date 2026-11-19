@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LinkField, LinkScreen } from "@/components/LinkField";
 import { cn, digits } from "@/components/ui";
+import { importFromLink } from "@/lib/linkImport";
 import { setApp, showToast } from "@/lib/store";
 
 const TOP_ROW = ["XS", "S", "M", "L"];
@@ -16,6 +17,7 @@ export default function ClosetLinkPage() {
   const [size, setSize] = useState("");
   const [numeric, setNumeric] = useState(false);
   const [numberSize, setNumberSize] = useState("");
+  const [busy, setBusy] = useState(false);
   const chosen = numeric ? numberSize : size;
 
   const SizeButton = ({ value }: { value: string }) => {
@@ -35,10 +37,18 @@ export default function ClosetLinkPage() {
     );
   };
 
-  const save = () => {
+  // 저장하면 링크에서 옷 사진(누끼)·이름, 미리 세팅한 링크면 실측까지 가져와요 (lib/linkImport.ts)
+  const save = async () => {
+    if (busy) return;
     if (!link) return showToast("판매처 상품 링크를 입력해 주세요.");
     if (!chosen) return showToast("구매한 사이즈를 선택해 주세요.");
-    setApp(() => ({ pendingLink: { url: link, size: chosen } }));
+    setBusy(true);
+    const imp = await importFromLink(link, chosen);
+    setBusy(false);
+    if (imp.preset) showToast("판매처에서 옷 사진과 실측을 불러왔어요.");
+    else if (imp.image) showToast("판매처에서 옷 사진을 불러왔어요. 실측은 직접 확인해 주세요.");
+    else showToast("이 링크에서는 옷 사진을 가져오지 못했어요.");
+    setApp(() => ({ pendingLink: { url: link, size: chosen, ...imp } }));
     router.push("/closet");
   };
 
@@ -54,7 +64,7 @@ export default function ClosetLinkPage() {
         </>
       }
       desc="실제로 구매한 상품 페이지와 사이즈를 함께 남겨요."
-      cta="링크와 구매 사이즈 저장"
+      cta={busy ? "판매처에서 불러오는 중…" : "링크와 구매 사이즈 저장"}
       onSave={save}
     >
       <LinkField label="판매처 상품 링크" value={link} onChange={setLink} />

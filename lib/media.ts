@@ -11,6 +11,16 @@ function draw(source: CanvasImageSource, width: number, height: number, quality 
   return canvas.toDataURL("image/jpeg", quality);
 }
 
+/** 주소(또는 data URL)의 사진을 작게 줄여요 (JPEG data URL) */
+export function shrinkSrc(src: string) {
+  return new Promise<string>((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(draw(img, img.width, img.height));
+    img.onerror = () => reject(new Error("이미지를 읽을 수 없어요"));
+    img.src = src;
+  });
+}
+
 /** 사진 한 장을 작게 줄여요. */
 export function shrinkPhoto(file: File) {
   return new Promise<string>((resolve, reject) => {
