@@ -33,7 +33,10 @@ export interface AppState {
   profile: Profile;
   concerns: string[];
   concernNote: string;
-  stylePicks: number[];
+  /** 온보딩 '좋아하는 스타일'에서 고른 사진 이름 (취향 찾기 사진과 같은 이름) */
+  stylePicks: string[];
+  /** 온보딩 '좋아하는 스타일'에 보여 줄 랜덤 12장 (한 번 정하면 화면을 오가도 그대로) */
+  styleOrder: string[];
   /** 취향 찾기에서 지금까지 저장한 사진 이름 (lib/data.ts TASTE_PHOTOS의 id) */
   tastePicks: string[];
   /** 취향 찾기 사진을 랜덤으로 섞은 순서와, 지금 보고 있는 묶음 번호 (저장할 때마다 다음 묶음) */
@@ -60,7 +63,8 @@ const initialState: AppState = {
   profile: { nickname: "", age: "24", gender: "female", height: "163", weight: "46", personalColor: "unknown" },
   concerns: ["advice"],
   concernNote: "",
-  stylePicks: [0],
+  stylePicks: [],
+  styleOrder: [],
   tastePicks: [],
   tasteOrder: [],
   tasteRound: 0,
@@ -89,8 +93,10 @@ function load() {
     if (raw) state = { ...initialState, ...JSON.parse(raw) };
     // 예전 버전은 취향 사진을 숫자로 기억했어요 → 이름(문자) 방식으로 바뀌어서 비워요
     if (state.tastePicks.some((x) => typeof x !== "string")) state = { ...state, tastePicks: [], tasteOrder: [], tasteRound: 0 };
+    // 예전 버전은 온보딩 스타일 사진도 숫자로 기억했어요
+    if (state.stylePicks.some((x) => typeof x !== "string")) state = { ...state, stylePicks: [], styleOrder: [] };
     // 목록에서 빠진 취향 사진은 저장한 선택에서도 빼요
-    else state = { ...state, tastePicks: state.tastePicks.filter((id) => !!tastePhoto(id)) };
+    state = { ...state, tastePicks: state.tastePicks.filter((id) => !!tastePhoto(id)) };
   } catch {
     state = initialState;
   }

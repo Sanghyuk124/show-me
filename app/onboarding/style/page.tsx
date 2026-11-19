@@ -2,14 +2,36 @@
 
 import { OnboardingFrame } from "@/components/OnboardingFrame";
 import { cn } from "@/components/ui";
-import { STYLE_PHOTOS } from "@/lib/data";
+import { useEffect } from "react";
+import { STYLE_PICK_COUNT, TASTE_PHOTOS, tastePhoto, type Gender } from "@/lib/data";
 import { setApp, useApp } from "@/lib/store";
+
+/** 성별에 맞는 취향 사진 18장 중 랜덤 12장 */
+function randomTwelve(gender: Gender) {
+  const ids = TASTE_PHOTOS[gender].map((p) => p.id);
+  for (let i = ids.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+  }
+  return ids.slice(0, STYLE_PICK_COUNT);
+}
+
+/** 저장해 둔 12장이 지금 성별의 사진들인지 (성별을 바꾸면 다시 골라요) */
+const validOrder = (order: string[], gender: Gender) =>
+  order.length === Math.min(STYLE_PICK_COUNT, TASTE_PHOTOS[gender].length) && order.every((id) => TASTE_PHOTOS[gender].some((p) => p.id === id));
 
 /** Figma 04 · 좋아하는 스타일 */
 export default function StyleStep() {
-  const { stylePicks, profile } = useApp();
-  const toggle = (i: number) =>
-    setApp((s) => ({ stylePicks: s.stylePicks.includes(i) ? s.stylePicks.filter((n) => n !== i) : [...s.stylePicks, i] }));
+  const { stylePicks, styleOrder, profile } = useApp();
+  const gender = profile.gender;
+  const ready = validOrder(styleOrder ?? [], gender);
+  useEffect(() => {
+    // 저장된 값을 다시 확인하고 섞어요 (화면이 막 열릴 때 잠깐 보이는 빈 값으로 덮어쓰지 않게)
+    if (!ready) setApp((s) => (validOrder(s.styleOrder ?? [], s.profile.gender) ? {} : { styleOrder: randomTwelve(s.profile.gender), stylePicks: [] }));
+  }, [ready, gender]);
+  const photos = ready ? styleOrder.map(tastePhoto).filter((p) => !!p) : [];
+  const toggle = (id: string) =>
+    setApp((s) => ({ stylePicks: s.stylePicks.includes(id) ? s.stylePicks.filter((n) => n !== id) : [...s.stylePicks, id] }));
 
   return (
     <OnboardingFrame step={3} title="좋아하는 스타일" back="/onboarding/concerns" cta="쇼핑메이트와 시작하기" next="/chat">
@@ -25,16 +47,16 @@ export default function StyleStep() {
           여러 개 선택할 수 있어요.
         </p>
 
-        <div className="mx-auto grid grid-cols-[repeat(3,86px)] gap-[3.84px]">
-          {STYLE_PHOTOS[profile.gender].map((src, i) => {
-            const on = stylePicks.includes(i);
+        <div className="mx-auto grid min-h-[452px] grid-cols-[repeat(3,86px)] gap-[3.84px]">
+          {photos.map((p, i) => {
+            const on = stylePicks.includes(p.id);
             return (
               <button
-                key={src}
+                key={p.id}
                 type="button"
                 aria-pressed={on}
-                aria-label={`스타일 사진 ${i + 1}`}
-                onClick={() => toggle(i)}
+                aria-label={`스타일 사진 ${i + 1} · ${p.tag}`}
+                onClick={() => toggle(p.id)}
                 className={cn(
                   // Figma에서 6번째 사진만 높이가 103.66px이에요.
                   "relative w-[86px] self-center overflow-hidden rounded-[3.77px] border-[1.5px]",
@@ -42,7 +64,7 @@ export default function StyleStep() {
                   on ? "border-plum" : "border-transparent",
                 )}
               >
-                <img src={src} alt="" className="absolute inset-0 size-full object-cover" />
+                <img src={p.src} alt="" className="absolute inset-0 size-full object-cover" />
               </button>
             );
           })}

@@ -86,13 +86,8 @@ export const CONCERNS = [
   { id: "etc", title: "기타", desc: "어떤 고민이든 편하게 이야기해요." },
 ];
 
-const pad = (n: number) => String(n).padStart(2, "0");
-
-/** 온보딩 '좋아하는 스타일' 사진 (Figma 04 · 여성 / 04 · 남성). 마지막 사진은 두 화면이 같아요. */
-export const STYLE_PHOTOS: Record<Gender, string[]> = {
-  female: Array.from({ length: 12 }, (_, i) => `/images/style/style-${pad(i + 1)}.jpg`),
-  male: [...Array.from({ length: 11 }, (_, i) => `/images/style/style-male-${pad(i + 1)}.jpg`), "/images/style/style-12.jpg"],
-};
+/** 온보딩 '좋아하는 스타일'(4번째 화면)에 보이는 사진 수. 취향 찾기 사진(아래 TASTE_PHOTOS)에서 성별별로 랜덤으로 골라요. */
+export const STYLE_PICK_COUNT = 12;
 
 /**
  * 취향 찾기 사진 목록 (성별마다 따로). 처음엔 랜덤 9장, 저장하면 아직 안 본 나머지 9장이 나와요.
