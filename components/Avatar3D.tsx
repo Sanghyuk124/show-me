@@ -9,7 +9,8 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import type { BodyShape } from "@/lib/bodyModel";
 import { loadAvatarModel, shapeAvatar, type AvatarModel } from "@/lib/avatarModel";
-import { buildGarment, type FitLine, type GarmentMesh, type GarmentSpec } from "@/lib/garment";
+import { buildGarment, templateKeyFor, type FitLine, type GarmentMesh, type GarmentSpec } from "@/lib/garment";
+import { loadGarmentTemplates, type GarmentTemplate, type TemplateKey } from "@/lib/garmentTemplates";
 import { cn } from "./ui";
 
 // 피부·속옷 색 (Figma 프로토타입의 아바타 이미지 참고)
@@ -62,7 +63,7 @@ float clothMask(vec3 p) {
 function createBody(model: AvatarModel, gender: BodyShape["gender"]) {
   const pal = PALETTE[gender];
   const lm = model.landmarks;
-  const position = new THREE.BufferAttribute(new Float32Array(model.vertexCount * 3), 3);
+  const position = new THREE.BufferAttribute(new Float32Array(model.base.length), 3); // 도우미 정점 포함 (그리지는 않아요)
   const body = new THREE.BufferGeometry();
   body.setAttribute("position", position);
   body.setAttribute("rest", new THREE.BufferAttribute(model.base, 3)); // 속옷 위치를 정하는 기본 몸 좌표
@@ -103,6 +104,27 @@ function createBody(model: AvatarModel, gender: BodyShape["gender"]) {
   group.add(new THREE.Mesh(body, skinMat));
   group.add(new THREE.Mesh(eyes, new THREE.MeshStandardMaterial({ color: pal.eye, roughness: 0.35, metalness: 0 })));
   return { group, body, eyes, position };
+}
+
+/** 세 꼭짓점이 모두 옷에 덮인 몸 삼각형은 빼요 */
+function visibleIndex(index: Uint32Array, covered: Uint8Array) {
+  if (!covered.some((c) => c)) return index;
+  const out: number[] = [];
+  for (let t = 0; t < index.length; t += 3) {
+    if (covered[index[t]] && covered[index[t + 1]] && covered[index[t + 2]]) continue;
+    out.push(index[t], index[t + 1], index[t + 2]);
+  }
+  return new Uint32Array(out);
+}
+
+/** 세 꼭짓점이 모두 높이 y보다 위인 삼각형은 빼요 */
+function hiddenAbove(index: Uint32Array, pos: Float32Array, y: number) {
+  const out: number[] = [];
+  for (let t = 0; t < index.length; t += 3) {
+    if (pos[index[t] * 3 + 1] > y && pos[index[t + 1] * 3 + 1] > y && pos[index[t + 2] * 3 + 1] > y) continue;
+    out.push(index[t], index[t + 1], index[t + 2]);
+  }
+  return new Uint32Array(out);
 }
 
 /** 발밑의 부드러운 그림자 */
@@ -241,8 +263,10 @@ export function Avatar3D({
     const rebuild = async ({ shape: s, garments: wear, fitView: heat }: Scene) => {
       const ticket = ++latest;
       let model: AvatarModel;
+      let templates: Map<TemplateKey, GarmentTemplate> | null = null;
       try {
-        model = await loadAvatarModel(s.gender);
+        // 옷을 입을 때만 옷 본 파일을 같이 불러와요
+        [model, templates] = await Promise.all([loadAvatarModel(s.gender), wear.length ? loadGarmentTemplates() : Promise.resolve(null)]);
       } catch {
         if (!disposed) setFailed(true);
         return;
@@ -259,15 +283,20 @@ export function Avatar3D({
       body.eyes.computeVertexNormals();
       body.body.computeBoundingSphere();
 
-      // 옷 입히기: 몸 둘레에 옷 단면을 걸쳐 옷 표면을 만들어요 (lib/garment.ts)
+      // 옷 입히기: MakeHuman 옷 본을 몸에 입히고, 옷 실측에 맞게 고쳐요 (lib/garment.ts)
       clearClothes();
       const reports: GarmentReport[] = [];
-      // 하의를 먼저 입히고 상의를 위에 (상의가 바지 허리를 덮도록 조금 더 띄워요)
+      const covered = new Uint8Array(model.vertexCount);
+      // 하의를 먼저 입히고 상의를 위에 (상의가 바지 허리를 덮어요)
       const ordered = [...wear].sort((a, b) => (a.kind === b.kind ? 0 : a.kind === "bottom" ? -1 : 1));
       let bottomMesh: GarmentMesh | undefined;
+      let bottomGeo: THREE.BufferGeometry | undefined;
       for (const spec of ordered) {
-        const gm = buildGarment(model, body.position.array as Float32Array, spec, spec.kind === "top" ? bottomMesh : undefined);
+        const tpl = templates?.get(templateKeyFor(spec, s.gender));
+        if (!tpl) continue;
+        const gm = buildGarment(model, body.position.array as Float32Array, spec, tpl, spec.kind === "top" ? bottomMesh : undefined);
         if (spec.kind === "bottom") bottomMesh = gm;
+        gm.covers.forEach((c, i) => c && (covered[i] = 1));
         const geo = new THREE.BufferGeometry();
         geo.setAttribute("position", new THREE.BufferAttribute(gm.positions, 3));
         geo.setAttribute("color", new THREE.BufferAttribute(gm.heat, 3));
@@ -277,8 +306,15 @@ export function Avatar3D({
           ? new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide })
           : new THREE.MeshStandardMaterial({ color: spec.color, roughness: 0.88, side: THREE.DoubleSide });
         clothes.add(new THREE.Mesh(geo, mat));
+        if (spec.kind === "bottom") bottomGeo = geo;
+        // 상의를 입으면 밑단보다 위의 바지는 가려지니 그리지 않아요 (바지가 상의 밖으로 비치지 않게)
+        if (spec.kind === "top" && bottomGeo && bottomMesh && gm.hemY !== undefined) {
+          bottomGeo.setIndex(new THREE.BufferAttribute(hiddenAbove(bottomMesh.index, bottomMesh.positions, gm.hemY + 3), 1));
+        }
         reports.push({ name: spec.name, kind: spec.kind, lines: gm.report });
       }
+      // 옷 아래 가려지는 몸은 그리지 않아요 (옷 밖으로 피부가 비치지 않게)
+      body.body.setIndex(new THREE.BufferAttribute(visibleIndex(model.index, covered), 1));
       reportRef.current?.(reports);
 
       frameH = Math.max(s.height, 175) + 8;

@@ -1,17 +1,19 @@
 // 아바타에 옷을 입히는 곳입니다. (그리기는 components/Avatar3D.tsx)
 //
-// 원리
-// - 옷은 몸과 따로, 고리(단면)를 층층이 쌓아 만든 천이에요 (몸통·소매·바짓가랑이).
-// - 높이마다 옷 둘레로 단면(타원·원통)을 만들고, 몸보다 바깥에 있도록 걸쳐요.
-//   가장 튀어나온 곳(가슴·엉덩이 등)에 걸리고 오목한 곳은 떠서 천이 떨어지듯 보여요.
-//   여유가 모자라면 몸에 딱 붙어요.
-// - 총 기장·소매 길이·바지 길이·밑위로 옷이 끝나는 위치를 정해요.
-// - 부위별 여유분으로 '핏 보기' 색(끼어요/딱 맞아요/넉넉해요)과 핏 설명 문장을 만들어요.
+// 순서
+// 1) 옷 모양 고르기: 티·셔츠·재킷·긴바지·스커트·반바지 (이름·카테고리·소매 길이로 자동, 또는 옷 데이터의 garmentType)
+// 2) MakeHuman(CC0) 기본 옷 본을 아바타 몸에 그대로 입혀요 → 지금 체형에 맞는 원래 핏 (lib/garmentTemplates.ts)
+// 3) 옷 실측에 맞게 고쳐요
+//    - 둘레: 높이마다 '옷 실측 둘레 - 옷 본 둘레'만큼 넓히거나 줄여요. 몸보다 작으면 몸에 딱 붙어요.
+//    - 기장·소매·밑위: 옷 본을 위아래(소매는 팔 방향)로 늘이거나 줄여서 끝나는 위치를 맞춰요.
+//      옮긴 자리의 몸 굵기를 다시 재서, 옷이 몸 안으로 들어가지 않게 해요.
+// 4) 부위별 여유분으로 '핏 보기' 색(끼어요/딱 붙어요/잘 맞아요/넉넉해요)과 핏 설명 문장을 만들어요.
 //
 // 옷 치수는 옷장의 실측(cm)을 그대로 써요. 둘레는 '단면 너비 × 2'로 입력한 값이에요.
 
 import type { AvatarModel } from "./avatarModel";
-import type { Category, Measures } from "./data";
+import type { Category, ClosetItem, Gender, Measures } from "./data";
+import { placeCylinder, placeTemplate, templateFor, type GarmentStyle, type GarmentTemplate, type TemplateKey } from "./garmentTemplates";
 
 export type GarmentKind = "top" | "bottom";
 
@@ -20,23 +22,54 @@ export interface GarmentSpec {
   name: string;
   kind: GarmentKind;
   category: Category;
+  style: GarmentStyle;
   color: string;
-  /** cm. 상의: length·chest·sleeve·shoulder·waist / 하의: waist·hip·thigh·rise·length (+hem 선택) */
+  /** cm. 상의: length·chest·sleeve·shoulder·waist / 하의: waist·hip·thigh·rise·length (+hem 선택) / 스커트: waist·hip·length */
   measures: Record<string, number>;
 }
 
+const NEED: Record<GarmentStyle, string[]> = {
+  tee: ["length", "sleeve", "shoulder", "waist"],
+  tee_long: ["length", "sleeve", "shoulder", "waist"],
+  shirt: ["length", "sleeve", "shoulder", "waist"],
+  jacket: ["length", "sleeve", "shoulder", "waist"],
+  pants: ["waist", "hip", "thigh", "rise", "length"],
+  shorts: ["waist", "hip", "thigh", "rise", "length"],
+  skirt: ["waist", "hip", "length"],
+};
+
+/** 옷 모양 고르기 */
+export function garmentStyle(item: Pick<ClosetItem, "name" | "category" | "garmentType">, m: Record<string, number>): GarmentStyle | null {
+  const shortSleeve = (m.sleeve ?? 60) < 35;
+  const t = item.garmentType;
+  if (t === "tee") return shortSleeve ? "tee" : "tee_long";
+  if (t === "shirt") return shortSleeve ? "tee" : "shirt";
+  if (t) return t;
+  const name = item.name.toLowerCase();
+  if (item.category === "bottom") {
+    if (/스커트|치마|skirt/.test(name)) return "skirt";
+    if (/반바지|쇼츠|숏츠|shorts/.test(name) || (m.length ?? 100) < 60) return "shorts";
+    return "pants";
+  }
+  if (item.category === "outer" || /재킷|자켓|코트|점퍼|블레이저|jacket|coat/.test(name)) return "jacket";
+  if (item.category !== "top") return null;
+  if (shortSleeve) return "tee";
+  if (/셔츠|블라우스|shirt|blouse/.test(name)) return "shirt";
+  return "tee_long";
+}
+
 /** 옷장 옷 → 입히기용 정보. 필요한 실측이 모자라면 null */
-export function toGarment(item: { id: string; name: string; category: Category; measures: Measures }, color: string): GarmentSpec | null {
-  const kind: GarmentKind | null = item.category === "bottom" ? "bottom" : item.category === "top" || item.category === "outer" ? "top" : null;
-  if (!kind) return null;
-  const need = kind === "top" ? ["length", "sleeve", "shoulder", "waist"] : ["waist", "hip", "thigh", "rise", "length"];
+export function toGarment(item: Pick<ClosetItem, "id" | "name" | "category" | "measures" | "garmentType">, color: string): GarmentSpec | null {
   const m: Record<string, number> = {};
-  for (const [k, v] of Object.entries(item.measures)) {
+  for (const [k, v] of Object.entries(item.measures as Measures)) {
     const n = Number.parseFloat(v);
     if (Number.isFinite(n) && n > 0) m[k] = n;
   }
-  if (need.some((k) => !m[k])) return null;
-  return { id: item.id, name: item.name, kind, category: item.category, color, measures: m };
+  const style = garmentStyle(item, m);
+  if (!style) return null;
+  if (NEED[style].some((k) => !m[k])) return null;
+  const kind: GarmentKind = item.category === "bottom" ? "bottom" : "top";
+  return { id: item.id, name: item.name, kind, category: item.category, style, color, measures: m };
 }
 
 export const missingFor = (category: Category) =>
@@ -65,7 +98,7 @@ class Measure {
     }
     return { y: y / r.length, c };
   }
-  point(i: number): [number, number, number] {
+  point(i: number): V3 {
     return [this.pos[i * 3], this.pos[i * 3 + 1], this.pos[i * 3 + 2]];
   }
 }
@@ -83,7 +116,11 @@ function circAt(levels: Level[], y: number) {
 }
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * Math.min(1, Math.max(0, t));
-const MIN_GAP = 0.3; // 옷이 몸에 붙어도 이만큼은 띄워서 겹치지 않게 (cm)
+const smooth = (a: number, b: number, x: number) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
+const MIN_GAP = 0.35; // 옷이 몸에 붙어도 이만큼은 띄워서 겹치지 않게 (cm)
 
 /* ───────── 핏 판단 ───────── */
 
@@ -107,10 +144,15 @@ export interface FitLine {
 
 export interface GarmentMesh {
   spec: GarmentSpec;
+  template: TemplateKey;
   positions: Float32Array;
   index: Uint32Array;
   /** 핏 보기 색 (정점마다) */
   heat: Float32Array;
+  /** 옷이 덮는 몸 정점 (1이면 덮음) → 그 아래 몸은 그리지 않아 옷 밖으로 비치지 않게 해요 */
+  covers: Uint8Array;
+  /** 상의 밑단 높이: 그 위의 바지는 상의에 가려져서 그리지 않아요 */
+  hemY?: number;
   report: FitLine[];
 }
 
@@ -126,373 +168,475 @@ function heatColor(ease: number, fitFrom: number, looseFrom: number, out: Float3
 
 const signed = (n: number) => `${n >= 0 ? "+" : ""}${Math.round(n)}cm`;
 
-/* ───────── 옷 만들기 ───────── */
+/* ───────── 몸·옷 단면 (축을 따라 1cm마다, 둘레를 k칸으로 나눠 가장 멀리 나온 거리) ───────── */
 
-/** underMesh: 상의 안에 입은 하의(이미 만든 천). 상의는 몸과 바지 천을 모두 덮도록 걸쳐요 */
-export function buildGarment(model: AvatarModel, pos: Float32Array, spec: GarmentSpec, underMesh?: GarmentMesh): GarmentMesh {
-  const under = underMesh?.spec;
+type V3 = [number, number, number];
+const dot = (a: V3, b: V3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const cross = (a: V3, b: V3): V3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const norm = (a: V3): V3 => {
+  const l = Math.hypot(a[0], a[1], a[2]) || 1;
+  return [a[0] / l, a[1] / l, a[2] / l];
+};
+
+interface Section {
+  /** 축 위치 t에서의 단면 중심 */
+  center(t: number): V3;
+  /** 축 위치 t, 각도 th에서 몸(또는 옷)이 중심에서 떨어진 거리 */
+  r(t: number, th: number): number;
+  /** 축 위치 t에서의 둘레 */
+  perim(t: number): number;
+  u: V3;
+  v: V3;
+  w: V3;
+  origin: V3;
+}
+
+/**
+ * pts의 점들(list)로 축(origin, w)을 따라 단면들을 만들어요.
+ * mode "torso": 중심 = (0, y, 앞뒤 가운데) / "limb": 중심 = 그 높이 점들의 평균
+ */
+function section(pts: Float32Array, list: ArrayLike<number>, origin: V3, w: V3, t0: number, t1: number, k: number, mode: "torso" | "limb"): Section {
+  const u = mode === "torso" ? ([1, 0, 0] as V3) : norm(cross(w, Math.abs(w[2]) > 0.9 ? [1, 0, 0] : [0, 0, 1]));
+  const v = mode === "torso" ? ([0, 0, 1] as V3) : cross(w, u);
+  const bins = Math.max(2, Math.ceil(t1 - t0) + 1);
+  const buckets: number[][] = Array.from({ length: bins }, () => []);
+  const ts = new Float32Array(list.length);
+  for (let n = 0; n < list.length; n++) {
+    const a = list[n] * 3;
+    const t = (pts[a] - origin[0]) * w[0] + (pts[a + 1] - origin[1]) * w[1] + (pts[a + 2] - origin[2]) * w[2];
+    ts[n] = t;
+    const b = Math.round(t - t0);
+    for (let d = -2; d <= 2; d++) {
+      const bb = b + d;
+      if (bb >= 0 && bb < bins && Math.abs(t - t0 - bb) <= 1.6) buckets[bb].push(n);
+    }
+  }
+  // 1) 중심
+  const cen = new Float32Array(bins * 3).fill(NaN);
+  for (let b = 0; b < bins; b++) {
+    const L = buckets[b];
+    if (!L.length) continue;
+    let sx = 0, sy = 0, sz = 0, z0 = Infinity, z1 = -Infinity;
+    for (const n of L) {
+      const a = list[n] * 3;
+      sx += pts[a];
+      sy += pts[a + 1];
+      sz += pts[a + 2];
+      z0 = Math.min(z0, pts[a + 2]);
+      z1 = Math.max(z1, pts[a + 2]);
+    }
+    let c: V3 = mode === "torso" ? [0, 0, (z0 + z1) / 2] : [sx / L.length, sy / L.length, sz / L.length];
+    // 축 위치를 정확히 t로
+    const tc = t0 + b;
+    const off = dot([c[0] - origin[0], c[1] - origin[1], c[2] - origin[2]], w) - tc;
+    c = [c[0] - w[0] * off, c[1] - w[1] * off, c[2] - w[2] * off];
+    cen.set(c, b * 3);
+  }
+  fillNaN(cen, bins);
+  for (let pass = 0; pass < 3; pass++) {
+    const c0 = cen.slice();
+    for (let b = 1; b < bins - 1; b++) for (let d = 0; d < 3; d++) cen[b * 3 + d] = (c0[(b - 1) * 3 + d] + c0[b * 3 + d] + c0[(b + 1) * 3 + d]) / 3;
+  }
+  // 2) 각도별 거리
+  const R = new Float32Array(bins * k).fill(-1);
+  for (let b = 0; b < bins; b++) {
+    const cx = cen[b * 3], cy = cen[b * 3 + 1], cz = cen[b * 3 + 2];
+    for (const n of buckets[b]) {
+      const a = list[n] * 3;
+      const dx = pts[a] - cx, dy = pts[a + 1] - cy, dz = pts[a + 2] - cz;
+      const pu = dx * u[0] + dy * u[1] + dz * u[2];
+      const pv = dx * v[0] + dy * v[1] + dz * v[2];
+      const j = ((Math.round((Math.atan2(pv, pu) / (2 * Math.PI)) * k) % k) + k) % k;
+      const r = Math.hypot(pu, pv);
+      if (r > R[b * k + j]) R[b * k + j] = r;
+    }
+    fillCircle(R, b * k, k);
+  }
+  // 빈 단면은 가까운 단면으로, 그리고 위아래로 다듬기 (튀어나온 곳은 줄이지 않아요)
+  let last = -1;
+  for (let b = 0; b < bins; b++) {
+    if (R[b * k] >= 0) last = b;
+    else if (last >= 0) R.copyWithin(b * k, last * k, last * k + k);
+  }
+  last = -1;
+  for (let b = bins - 1; b >= 0; b--) {
+    if (R[b * k] >= 0) last = b;
+    else if (last >= 0) R.copyWithin(b * k, last * k, last * k + k);
+  }
+  for (let i = 0; i < R.length; i++) if (R[i] < 0) R[i] = 0;
+  const dil = R.slice();
+  for (let b = 0; b < bins; b++)
+    for (let j = 0; j < k; j++) {
+      let m = R[b * k + j];
+      for (let d = -2; d <= 2; d++) {
+        const bb = Math.min(bins - 1, Math.max(0, b + d));
+        m = Math.max(m, R[bb * k + j]);
+      }
+      dil[b * k + j] = m;
+    }
+  const Rs = R.slice();
+  for (let b = 0; b < bins; b++)
+    for (let j = 0; j < k; j++) {
+      let s = 0;
+      for (let d = -2; d <= 2; d++) s += dil[Math.min(bins - 1, Math.max(0, b + d)) * k + j];
+      Rs[b * k + j] = Math.max(R[b * k + j], s / 5);
+    }
+  const per = new Float32Array(bins);
+  for (let b = 0; b < bins; b++) {
+    let s = 0;
+    for (let j = 0; j < k; j++) {
+      const a = (j / k) * 2 * Math.PI, a2 = ((j + 1) / k) * 2 * Math.PI;
+      const r1 = Rs[b * k + j], r2 = Rs[b * k + ((j + 1) % k)];
+      s += Math.hypot(r2 * Math.cos(a2) - r1 * Math.cos(a), r2 * Math.sin(a2) - r1 * Math.sin(a));
+    }
+    per[b] = s;
+  }
+  const at = (t: number) => {
+    const f = Math.min(bins - 1, Math.max(0, t - t0));
+    const b0 = Math.floor(f);
+    return [b0, Math.min(bins - 1, b0 + 1), f - b0] as const;
+  };
+  return {
+    u,
+    v,
+    w,
+    origin,
+    center(t) {
+      const [b0, b1, f] = at(t);
+      const c: V3 = [0, 0, 0];
+      for (let d = 0; d < 3; d++) c[d] = cen[b0 * 3 + d] * (1 - f) + cen[b1 * 3 + d] * f;
+      // 범위 밖이면 축을 따라 이어서
+      const tc = t0 + b0 + f;
+      for (let d = 0; d < 3; d++) c[d] += w[d] * (t - tc);
+      return c;
+    },
+    r(t, th) {
+      const [b0, b1, f] = at(t);
+      let s = (th / (2 * Math.PI)) * k;
+      s = ((s % k) + k) % k;
+      const j0 = Math.floor(s) % k, j1 = (j0 + 1) % k, g = s - Math.floor(s);
+      const r0 = Rs[b0 * k + j0] * (1 - g) + Rs[b0 * k + j1] * g;
+      const r1 = Rs[b1 * k + j0] * (1 - g) + Rs[b1 * k + j1] * g;
+      return r0 * (1 - f) + r1 * f;
+    },
+    perim(t) {
+      const [b0, b1, f] = at(t);
+      return per[b0] * (1 - f) + per[b1] * f;
+    },
+  };
+}
+
+function fillNaN(cen: Float32Array, bins: number) {
+  let last = -1;
+  for (let b = 0; b < bins; b++) {
+    if (!Number.isNaN(cen[b * 3])) last = b;
+    else if (last >= 0) cen.copyWithin(b * 3, last * 3, last * 3 + 3);
+  }
+  last = -1;
+  for (let b = bins - 1; b >= 0; b--) {
+    if (!Number.isNaN(cen[b * 3])) last = b;
+    else if (last >= 0) cen.copyWithin(b * 3, last * 3, last * 3 + 3);
+  }
+  for (let i = 0; i < cen.length; i++) if (Number.isNaN(cen[i])) cen[i] = 0;
+}
+
+/** 원 둘레 k칸 중 빈 칸(-1)을 양옆 칸으로 채워요 */
+function fillCircle(R: Float32Array, o: number, k: number) {
+  let any = false;
+  for (let j = 0; j < k; j++) if (R[o + j] >= 0) any = true;
+  if (!any) return;
+  const c0 = R.slice(o, o + k);
+  for (let j = 0; j < k; j++) {
+    if (c0[j] >= 0) continue;
+    let p = j, q = j, dp = 0, dq = 0;
+    while (c0[(p = (p - 1 + k) % k)] < 0) dp++;
+    while (c0[(q = (q + 1) % k)] < 0) dq++;
+    R[o + j] = (c0[p] * (dq + 1) + c0[q] * (dp + 1)) / (dp + dq + 2);
+  }
+}
+
+/* ───────── 옷 입히기 ───────── */
+
+/**
+ * tpl: 이 옷에 쓸 MakeHuman 옷 본 (templateFor(spec.style, 성별))
+ * underMesh: 상의 안에 입은 하의(이미 만든 옷). 상의는 몸과 바지를 모두 덮도록 걸쳐요
+ */
+export function buildGarment(model: AvatarModel, pos: Float32Array, spec: GarmentSpec, tpl: GarmentTemplate, underMesh?: GarmentMesh): GarmentMesh {
   const M = new Measure(model, pos);
-  const n = model.vertexCount;
+  const nb = model.vertexCount; // 그리는 몸 정점 수
   const g = spec.measures;
-  const H = (() => {
-    let hi = 0;
-    for (let i = 1; i < pos.length; i += 3) hi = Math.max(hi, pos[i]);
-    return hi;
-  })();
+  let H = 0;
+  for (let i = 1; i < nb * 3; i += 3) H = Math.max(H, pos[i]);
   const s = H / 165;
 
   const hips = M.ring("hips");
   const waist = M.ring("waist");
   const underbust = M.ring("underbust");
   const bust = M.ring("bust");
-  const torso: Level[] = [hips, waist, underbust, bust];
-  const legLevels: Level[] = [M.ring("ankle"), M.ring("calf"), M.ring("knee"), M.ring("thigh")];
+  const torsoLv: Level[] = [hips, waist, underbust, bust];
+  const legLv: Level[] = [M.ring("ankle"), M.ring("calf"), M.ring("knee"), M.ring("thigh")];
   const crotchY = pos[model.crotch * 3 + 1];
   const tipL = M.point(model.shoulderTips[0]);
   const tipR = M.point(model.shoulderTips[1]);
   const tipY = (tipL[1] + tipR[1]) / 2;
   const bodyShoulder = Math.abs(tipL[0] - tipR[0]);
-  // 팔 방향: 어깨 끝 → 손목 (오른팔은 왼팔을 좌우로 뒤집어 써요)
   const wristL = M.point(model.rulers.lowerarm[1]);
   const armLen = Math.hypot(wristL[0] - tipL[0], wristL[1] - tipL[1], wristL[2] - tipL[2]);
-  const dirL: V3 = [(wristL[0] - tipL[0]) / armLen, (wristL[1] - tipL[1]) / armLen, (wristL[2] - tipL[2]) / armLen];
+  const dirL = norm([wristL[0] - tipL[0], wristL[1] - tipL[1], wristL[2] - tipL[2]]);
   const dirR: V3 = [-dirL[0], dirL[1], dirL[2]];
-
-  const report: FitLine[] = [];
-  const sheet = new Sheet();
-
-  const handTop = (tipY + crotchY) / 2; // 이 높이 아래의 팔 정점은 손·손목이에요
-  // 정점 묶음: 팔 아닌 곳(몸통+다리), 왼/오른 다리, 왼/오른 팔
-  const torsoV: number[] = [];
-  const legV: number[][] = [[], []];
-  const armV: number[][] = [[], []];
-  for (let i = 0; i < n; i++) {
-    const side = pos[i * 3] >= 0 ? 0 : 1;
-    if (model.armF[i] > 128) armV[side].push(i);
-    if (model.armF[i] > (pos[i * 3 + 1] < handTop ? 24 : 128)) continue; // 손은 몸통 단면에서 빼요 (엉덩이 옆 손가락까지 감싸지 않게)
-    {
-      torsoV.push(i);
-      if (model.legF[i] > 128) legV[side].push(i);
-    }
-  }
+  const tips = [tipL, tipR];
+  const dirs = [dirL, dirR];
   const UP: V3 = [0, 1, 0];
-  const X: V3 = [1, 0, 0];
-  const Z: V3 = [0, 0, 1];
+  const O: V3 = [0, 0, 0];
+  const TAU = 2 * Math.PI;
 
-  /** 몸통 고리들: 높이마다 몸 단면을 재고, 옷 둘레(gc)로 키운 타원과 몸(+간격) 중 바깥쪽에 천을 둘러요 */
-  const xMax = bodyShoulder / 2 - 1;
-  const underPts = underMesh ? Array.from({ length: underMesh.positions.length / 3 }, (_, i) => i) : [];
-  const torsoTube = (y0: number, y1: number, gcAt: (y: number) => number, gapAt: (y: number) => number, shrinkAt: (y: number) => number, fitFrom: number, looseFrom: number, neck?: (th: number) => number) => {
-    const ys = steps(y0, y1, 1);
-    // 1) 단면 크기 (반너비·앞뒤 범위)
-    const dims = ys.map((y) => {
-      let hw = 1, z0 = Infinity, z1 = -Infinity;
-      for (const i of torsoV) {
-        const a = i * 3;
-        if (Math.abs(pos[a + 1] - y) > 2 || (y > underbust.y && Math.abs(pos[a]) > xMax)) continue;
-        hw = Math.max(hw, Math.abs(pos[a]));
-        z0 = Math.min(z0, pos[a + 2]);
-        z1 = Math.max(z1, pos[a + 2]);
-      }
-      return Number.isFinite(z0) ? [hw, (z0 + z1) / 2, Math.max(1, (z1 - z0) / 2)] : [hw, 0, 10];
-    });
-    const sm = smoothRows(dims);
-    // 2) 고리마다 반지름
-    const own = ys.map((y, r) => sectors(torsoV, pos, [0, y, sm[r][1]], X, Z, UP, 2, KT, y > underbust.y ? xMax : Infinity));
-    const bodies = cleanBodies(
-      ys.map((y, r) => {
-        const c: V3 = [0, y, sm[r][1]];
-        const b = own[r];
-        if (!underPts.length) return b;
-        // 안에 입은 바지 천도 '몸'으로 쳐요 (그 위로 +간격)
-        const u = sectors(underPts, underMesh!.positions, c, X, Z, UP, 1, KT, Infinity, false);
-        return b.map((x, j) => Math.max(x, u[j] + 0.4));
-      }),
-    );
-    const rows = ys.map((y, r) => {
-      const [a0, cz, b0] = sm[r];
-      const c: V3 = [0, y, cz];
-      const body = bodies[r];
-      const gc = gcAt(y);
-      const k = lerp(Math.max(1, gc / ellipsePerim(a0, b0)), 0.8, shrinkAt(y)); // 0.8: 몸 안쪽 타원 → 몸(+간격)에 붙어요
-      const gap = gapAt(y);
-      const R = Array.from(body, (rb, j) => {
-        const th = (j / KT) * Math.PI * 2;
-        const ux = Math.cos(th), uz = Math.sin(th);
-        const ra = a0 * k, rbb = b0 * k;
-        const re = (ra * rbb) / Math.hypot(rbb * ux, ra * uz);
-        return Math.max(rb + gap, re);
-      });
-      return { c, body, R, ease: gc - polyPerim(own[r]) }; // 핏 색은 실제 몸 기준
-    });
-    relax(rows);
-    const rings = rows.map((row) => ring(row.c, X, Z, row.R));
-    if (neck) {
-      // 목선: 각도마다 목선 높이보다 위에 있는 점은 목선 높이의 고리 점으로 내려요
-      for (let j = 0; j < KT; j++) {
-        const lim = neck((j / KT) * 2 * Math.PI);
-        let last = 0;
-        for (let r = 0; r < ys.length; r++) if (ys[r] <= lim) last = r;
-        if (last + 1 >= ys.length) continue;
-        // 목선 높이에 정확히 맞춘 점 (위아래 고리 사이를 이어서)
-        const t = (lim - ys[last]) / (ys[last + 1] - ys[last]);
-        const p = [0, 1, 2].map((d) => lerp(rings[last][j * 3 + d], rings[last + 1][j * 3 + d], t));
-        for (let r = last + 1; r < ys.length; r++) rings[r].splice(j * 3, 3, ...p);
-      }
+  /* 1) MakeHuman 옷 본을 지금 몸에 그대로 입혀요 */
+  const nq = tpl.vertexCount;
+  let Q = tpl.cyl ? new Float32Array(0) : placeTemplate(tpl, pos);
+  const legsSplit = spec.style === "pants" || spec.style === "shorts";
+  // 옷 점마다 팔·다리에 속하는 정도 (묶인 몸 정점 기준)
+  const wArm = new Float32Array(nq);
+  const wLeg = new Float32Array(nq);
+  for (let i = 0; i < nq; i++) {
+    let a = 0, l = 0;
+    for (let k = 0; k < 3; k++) {
+      const r = tpl.refs[i * 3 + k];
+      a += model.armF[r] * tpl.weights[i * 3 + k];
+      l += model.legF[r] * tpl.weights[i * 3 + k];
     }
-    sheet.tube(rings, rows.map((row) => heatOf(row.ease, fitFrom, looseFrom)), KT);
-  };
+    wArm[i] = a / 255;
+    wLeg[i] = legsSplit ? l / 255 : 0;
+  }
+  const side = (x: number) => (x >= 0 ? 0 : 1);
 
-  /** 팔·다리 고리들: 축을 따라 단면 중심을 찾고, 원통(radiusAt)과 몸(+간격) 중 바깥쪽 */
-  const limbTube = (list: number[], origin: V3, w: V3, t0: number, t1: number, radiusAt: (t: number) => number, gap: number, fitFrom: number, looseFrom: number) => {
-    const u = norm(cross(w, Math.abs(w[2]) > 0.9 ? X : Z));
-    const v = cross(w, u);
-    const ts = steps(t0, t1, 1);
-    const cs = ts.map((t) => {
-      const p: V3 = [origin[0] + w[0] * t, origin[1] + w[1] * t, origin[2] + w[2] * t];
-      let sx = 0, sy = 0, sz = 0, m = 0;
-      for (const i of list) {
-        const a = i * 3;
-        const d = (pos[a] - p[0]) * w[0] + (pos[a + 1] - p[1]) * w[1] + (pos[a + 2] - p[2]) * w[2];
-        if (Math.abs(d) > 3) continue;
-        sx += pos[a] - w[0] * d;
-        sy += pos[a + 1] - w[1] * d;
-        sz += pos[a + 2] - w[2] * d;
-        m++;
-      }
-      return m ? [sx / m, sy / m, sz / m] : [NaN, NaN, NaN];
-    });
-    const centers = smoothRows(fillRows(cs));
-    const bodies = cleanBodies(ts.map((_, r) => sectors(list, pos, centers[r] as V3, u, v, w, 3, KL)));
-    const rows = ts.map((t, r) => {
-      const c = centers[r] as V3;
-      const body = bodies[r];
-      const rad = radiusAt(t);
-      const R = Array.from(body, (rb) => Math.max(rb + gap, rad));
-      return { c, body, R, ease: 2 * Math.PI * rad - polyPerim(body) };
-    });
-    relax(rows);
-    sheet.tube(rows.map((row) => ring(row.c, u, v, row.R)), rows.map((row) => heatOf(row.ease, fitFrom, looseFrom)), KL);
+  /* 2) 몸 단면 (몸통 / 왼·오른 다리 / 왼·오른 팔) */
+  const handTop = (tipY + crotchY) / 2; // 이 높이 아래의 팔 정점은 손·손목
+  const torsoBody: number[] = [];
+  const legBody: number[][] = [[], []];
+  const armBody: number[][] = [[], []];
+  for (let i = 0; i < nb; i++) {
+    const sd = side(pos[i * 3]);
+    if (model.armF[i] > 128) armBody[sd].push(i);
+    if (model.armF[i] > (pos[i * 3 + 1] < handTop ? 24 : 128)) continue;
+    torsoBody.push(i);
+    if (model.legF[i] > 128) legBody[sd].push(i);
+  }
+  const torsoS = section(pos, torsoBody, O, UP, 0, H, 48, "torso");
+  if (tpl.cyl) Q = placeCylinder(tpl, { crotchY, hipsY: hips.y, waistY: waist.y, hipsC: hips.c, centerZ: (y) => torsoS.center(y)[2] });
+  // 상의를 바지 위에 입으면: 바지 천도 '몸'으로 쳐서 그 위로 걸쳐요
+  let layerS = torsoS;
+  if (spec.kind === "top" && underMesh) {
+    const all = new Float32Array(pos.length + underMesh.positions.length);
+    all.set(pos);
+    all.set(underMesh.positions, pos.length);
+    const base = pos.length / 3;
+    const list = torsoBody.concat(Array.from({ length: underMesh.positions.length / 3 }, (_, j) => base + j));
+    layerS = section(all, list, O, UP, 0, H, 48, "torso");
+  }
+  const legS = legsSplit ? [0, 1].map((sd) => section(pos, legBody[sd], O, UP, 0, crotchY + 10, 32, "limb")) : [];
+  const armS = spec.kind === "top" ? [0, 1].map((sd) => section(pos, armBody[sd], tips[sd], dirs[sd], -8, armLen + 25, 32, "limb")) : [];
+
+  // 옷 본의 단면 (원래 둘레를 재요)
+  const gTorsoList: number[] = [];
+  const gLegList: number[][] = [[], []];
+  for (let i = 0; i < nq; i++) {
+    if (wArm[i] < 0.5 && wLeg[i] < 0.5) gTorsoList.push(i);
+    if (wLeg[i] >= 0.5) gLegList[side(Q[i * 3])].push(i);
+  }
+  const gTorso = section(Q, gTorsoList, O, UP, 0, H, 48, "torso");
+  const gLeg = legsSplit ? [0, 1].map((sd) => section(Q, gLegList[sd], O, UP, 0, crotchY + 10, 32, "limb")) : [];
+
+  /** 단면 S 기준으로 점 P를 축 위치 t → t2로 옮기고, 둘레를 2π·dr만큼 넓혀요 (몸 + gap 안으로는 안 들어가요) */
+  const move = (S: Section, P: V3, t: number, t2: number, dr: number, gap: number, out: number[]) => {
+    const c = S.center(t);
+    const d: V3 = [P[0] - c[0], P[1] - c[1], P[2] - c[2]];
+    const pu = dot(d, S.u);
+    const pv = dot(d, S.v);
+    const th = Math.atan2(pv, pu);
+    // 옷 본의 매끈한 모양(r)은 그대로 두고 둘레만 dr만큼, 몸(+간격) 안으로 들어가는 곳만 몸 밖으로 밀어요
+    const rb2 = S.r(t2, th);
+    const r2 = Math.max(rb2 + gap, Math.hypot(pu, pv) + dr);
+    const c2 = S.center(t2);
+    const cu = Math.cos(th) * r2, cv = Math.sin(th) * r2;
+    out[0] = c2[0] + S.u[0] * cu + S.v[0] * cv;
+    out[1] = c2[1] + S.u[1] * cu + S.v[1] * cv;
+    out[2] = c2[2] + S.u[2] * cu + S.v[2] * cv;
+    out[3] = r2 - rb2; // 몸에서 떨어진 거리
   };
+  const axial = (P: V3, o: V3, w: V3) => (P[0] - o[0]) * w[0] + (P[1] - o[1]) * w[1] + (P[2] - o[2]) * w[2];
+
+  const positions = new Float32Array(nq * 3);
+  const heat = new Float32Array(nq * 3);
+  const covers = new Uint8Array(nb);
+  const report: FitLine[] = [];
+  const pt = [0, 0, 0, 0];
+  const pa = [0, 0, 0, 0];
+  let topHem: number | undefined;
+  const pl = [0, 0, 0, 0];
 
   if (spec.kind === "top") {
+    /* ── 상의 ── */
     const hps = tipY + 4.5 * s; // 옆목점 (총 기장은 여기서부터 재요)
     const hemY = Math.max(crotchY - 25 * s, hps - g.length);
-    const neckY = hps + 0.5 * s;
     const gChest = g.chest ?? Math.max(g.waist, bust.c + 8);
     const gHem = g.waist;
     const dropShoulder = Math.max(0, (g.shoulder - bodyShoulder) / 2);
-    const sleeveEnd = g.sleeve - dropShoulder;
+    const sleeveEnd = Math.max(4, g.sleeve - dropShoulder);
     const chestEase = gChest - bust.c;
-    const extra = under ? 1.2 : 0; // 바지 위로 입으면 조금 더 띄워요
-    const underTop = under ? Math.min(waist.y + 4 * s, crotchY + under.measures.rise) : -1;
-    const underGc = (y: number) => {
-      if (!under || y > underTop + 1) return 0;
-      const u = under.measures;
-      return (y <= hips.y ? u.hip : lerp(u.hip, u.waist, (y - hips.y) / (underTop - hips.y))) + 5;
+    // 옷 본의 밑단·소매 끝
+    let yHemT = Infinity;
+    for (const i of gTorsoList) yHemT = Math.min(yHemT, Q[i * 3 + 1]);
+    const tEnd = [0, 0];
+    for (let i = 0; i < nq; i++) {
+      if (wArm[i] < 0.5) continue;
+      const sd = side(Q[i * 3]);
+      tEnd[sd] = Math.max(tEnd[sd], axial([Q[i * 3], Q[i * 3 + 1], Q[i * 3 + 2]], tips[sd], dirs[sd]));
+    }
+    topHem = hemY;
+    const pivot = underbust.y;
+    const mapY = (y: number) => (y < pivot ? pivot - ((pivot - y) * (pivot - hemY)) / Math.max(1, pivot - yHemT) : y);
+    const mapT = (t: number, sd: number) => (t <= 2 ? t : 2 + ((t - 2) * (sleeveEnd - 2)) / Math.max(1, tEnd[sd] - 2));
+    // 바지 위에 입으면 바지 둘레보다 넉넉하게
+    const under = underMesh?.spec;
+    const underTop = under ? Math.min(waist.y + 4 * s, crotchY + (under.measures.rise ?? 28)) : -1;
+    const gc = (y: number) => {
+      let c = y <= bust.y ? lerp(gHem, gChest, (y - hemY) / Math.max(1, bust.y - hemY)) : gChest;
+      if (under && y < underTop + 1) c = Math.max(c, (y <= hips.y ? under.measures.hip : under.measures.waist) + 4);
+      return c;
     };
-    torsoTube(
-      hemY,
-      neckY,
-      (y) => Math.max(y <= bust.y ? lerp(gHem, gChest, (y - hemY) / (bust.y - hemY)) : gChest, underGc(y)),
-      (y) => MIN_GAP + (y < underTop + 2 ? extra : 0),
-      (y) => (y > bust.y ? Math.min(1, (y - bust.y) / Math.max(tipY - bust.y, 1)) ** 1.5 : 0),
-      4,
-      16,
-      // 앞(z+)은 깊게, 뒤는 얕게 파인 둥근 목선
-      (th) => {
-        const c = Math.abs(Math.cos(th)) / 0.6; // 정면·뒷면 가운데에서 ±37° 정도 파여요
-        const depth = c < 1 ? Math.sqrt(1 - c * c) : 0;
-        return neckY - depth * (Math.sin(th) > 0 ? 7 * s : 2 * s);
-      },
-    );
-    // 소매: 어깨 끝보다 조금 안쪽에서 시작해 몸판과 겹치게
-    let upperR = 3 * s;
-    for (const list of armV)
-      for (const i of list) {
-        const side = pos[i * 3] >= 0 ? 0 : 1;
-        const tip = side ? tipR : tipL;
-        const dir = side ? dirR : dirL;
-        const dx = pos[i * 3] - tip[0], dy = pos[i * 3 + 1] - tip[1], dz = pos[i * 3 + 2] - tip[2];
-        const t = dx * dir[0] + dy * dir[1] + dz * dir[2];
-        if (t < 5 || t > 15) continue;
-        upperR = Math.max(upperR, Math.hypot(dx - dir[0] * t, dy - dir[1] * t, dz - dir[2] * t) / 2);
+    const sleeveDr = Math.min(3, Math.max(-1, ((gChest - gTorso.perim(bust.y)) / TAU) * 0.35));
+
+    for (let i = 0; i < nq; i++) {
+      const P: V3 = [Q[i * 3], Q[i * 3 + 1], Q[i * 3 + 2]];
+      const aw = smooth(0.3, 0.7, wArm[i]);
+      // 몸통 쪽
+      const y2 = mapY(P[1]);
+      const keepShoulder = smooth(bust.y, tipY, y2); // 어깨 쪽은 옷 본 그대로
+      const dr = ((gc(y2) - gTorso.perim(P[1])) / TAU) * (1 - keepShoulder);
+      move(layerS, P, P[1], y2, dr, under && y2 < underTop + 3 ? 1.2 : MIN_GAP, pt); // 바지 위는 조금 더 띄워요
+      // 소매 쪽
+      if (aw > 0) {
+        const sd = side(P[0]);
+        const t = axial(P, tips[sd], dirs[sd]);
+        move(armS[sd], P, t, mapT(t, sd), sleeveDr, MIN_GAP, pa);
       }
-    const sleeveTop = upperR + 0.8 + Math.max(0, chestEase) * 0.06;
-    for (const side of [0, 1]) {
-      const tip = side ? tipR : tipL;
-      const dir = side ? dirR : dirL;
-      // 어깨 쪽 시작 부분은 몸에 붙여서, 어깨 위로 날개처럼 솟지 않게
-      limbTube(armV[side], tip, dir, 2, sleeveEnd, (t) => lerp(sleeveTop, sleeveTop * 0.78, t / Math.max(sleeveEnd, 1)) * lerp(0.5, 1, (t - 2) / 6), 0.35, 2, 8);
+      for (let d = 0; d < 3; d++) positions[i * 3 + d] = pt[d] + (pa[d] - pt[d]) * aw;
+      if (aw > 0.5) heatColor(pa[3] * TAU, 2, 8, heat, i * 3);
+      else heatColor(y2 > bust.y ? chestEase : gc(y2) - torsoS.perim(y2), 4, 16, heat, i * 3);
+    }
+    // 옷 아래 가려지는 몸은 그리지 않아요 (끝선 근처는 남겨 둬요)
+    for (let i = 0; i < nb; i++) {
+      const y = pos[i * 3 + 1];
+      const af = model.armF[i] / 255;
+      if (af < 0.3 && y >= hemY + 2.5 && y <= bust.y) covers[i] = 1;
+      else if (af > 0.7) {
+        const sd = side(pos[i * 3]);
+        const t = axial([pos[i * 3], y, pos[i * 3 + 2]], tips[sd], dirs[sd]);
+        if (t >= 5 && t <= sleeveEnd - 3) covers[i] = 1;
+      }
     }
     // 핏 설명
-    const hemEase = gHem - circAt(torso, hemY);
+    const hemEase = gHem - circAt(torsoLv, hemY);
     report.push({ part: "가슴", text: `${signed(chestEase)} 여유${g.chest ? "" : " (가슴 둘레 미입력 · 추정)"}`, level: judge(chestEase, 4, 16) });
     report.push({ part: "밑단", text: `${signed(hemEase)} 여유`, level: judge(hemEase, 4, 18) });
     const sd = g.shoulder - bodyShoulder;
-    report.push({ part: "어깨", text: sd > 4 ? `${signed(sd)} · 어깨선이 내려와요` : sd < -2 ? `${signed(sd)} · 어깨가 좁아요` : `${signed(sd)} · 어깨선이 잘 맞아요`, level: sd < -2 ? "tight" : sd > 6 ? "loose" : "fit" });
+    report.push({
+      part: "어깨",
+      text: sd > 4 ? `${signed(sd)} · 어깨선이 내려와요` : sd < -2 ? `${signed(sd)} · 어깨가 좁아요` : `${signed(sd)} · 어깨선이 잘 맞아요`,
+      level: sd < -2 ? "tight" : sd > 6 ? "loose" : "fit",
+    });
     const wrist = sleeveEnd - armLen;
-    report.push({ part: "소매", text: Math.abs(wrist) < 2 ? "손목까지 와요" : wrist > 0 ? `손목보다 ${Math.round(wrist)}cm 길어요` : `손목보다 ${Math.round(-wrist)}cm 짧아요` });
-    const hemPos = hemY > hips.y + 4 ? "골반 위에서 끝나요 (크롭)" : hemY > crotchY ? "엉덩이 중간쯤에서 끝나요" : "엉덩이를 덮어요";
-    report.push({ part: "기장", text: hemPos });
+    report.push({
+      part: "소매",
+      text: sleeveEnd < armLen * 0.55 ? "반소매예요" : Math.abs(wrist) < 2 ? "손목까지 와요" : wrist > 0 ? `손목보다 ${Math.round(wrist)}cm 길어요` : `손목보다 ${Math.round(-wrist)}cm 짧아요`,
+    });
+    report.push({ part: "기장", text: hemY > hips.y + 4 ? "골반 위에서 끝나요 (크롭)" : hemY > crotchY ? "엉덩이 중간쯤에서 끝나요" : "엉덩이를 덮어요" });
+  } else if (spec.style === "skirt") {
+    /* ── 스커트 ── */
+    const topY = waist.y + 1 * s;
+    const hemY = Math.max(2, topY - g.length);
+    let yTopT = -Infinity, yHemT = Infinity;
+    for (let i = 0; i < nq; i++) {
+      yTopT = Math.max(yTopT, Q[i * 3 + 1]);
+      yHemT = Math.min(yHemT, Q[i * 3 + 1]);
+    }
+    const hy = hips.y;
+    const mapY = (y: number) => (y >= hy ? hy + ((y - hy) * (topY - hy)) / Math.max(1, yTopT - hy) : hy - ((hy - y) * (hy - hemY)) / Math.max(1, hy - yHemT));
+    const gcTop = (y: number) => lerp(g.hip, g.waist, (y - hy) / Math.max(1, topY - hy));
+    const hipDr = (g.hip - gTorso.perim(hy)) / TAU;
+    for (let i = 0; i < nq; i++) {
+      const P: V3 = [Q[i * 3], Q[i * 3 + 1], Q[i * 3 + 2]];
+      const y2 = mapY(P[1]);
+      const dr = y2 >= hy ? (gcTop(y2) - gTorso.perim(P[1])) / TAU : hipDr;
+      move(torsoS, P, P[1], y2, dr, MIN_GAP, pt);
+      positions.set([pt[0], pt[1], pt[2]], i * 3);
+      heatColor(y2 >= hy ? gcTop(y2) - torsoS.perim(y2) : g.hip - hips.c, 2, 10, heat, i * 3);
+    }
+    for (let i = 0; i < nb; i++) {
+      const y = pos[i * 3 + 1];
+      if (model.armF[i] < 77 && model.legF[i] < 128 && y >= crotchY && y <= topY - 2.5) covers[i] = 1;
+    }
+    const waistEase = g.waist - circAt(torsoLv, topY);
+    const hipEase = g.hip - hips.c;
+    report.push({ part: "허리", text: `${signed(waistEase)} 여유`, level: judge(waistEase, 1, 6) });
+    report.push({ part: "엉덩이", text: `${signed(hipEase)} 여유`, level: judge(hipEase, 2, 10) });
+    const kneeY = legLv[2].y;
+    report.push({ part: "기장", text: Math.abs(hemY - kneeY) < 3 ? "무릎 길이예요" : hemY > kneeY ? `무릎 위 ${Math.round(hemY - kneeY)}cm` : `무릎 아래 ${Math.round(kneeY - hemY)}cm` });
   } else {
+    /* ── 긴바지·반바지 ── */
     const topY = Math.min(waist.y + 4 * s, crotchY + g.rise);
     const hemY = Math.max(0.5, topY - g.length);
-    const thighRing = legLevels[3];
-    const gHem = g.hem ?? g.thigh * 0.72;
-    const legGc = (y: number) => (y >= thighRing.y ? g.thigh : lerp(gHem, g.thigh, (y - hemY) / (thighRing.y - hemY)));
-    // 골반 부분 (가랑이 아래로 살짝 내려와 다리 통과 겹치게)
-    // 가랑이 근처는 몸에 붙여서, 다리 통과 자연스럽게 이어지게 (치마 끝처럼 벌어지지 않게)
-    torsoTube(crotchY - 2 * s, topY, (y) => (y <= hips.y ? g.hip : lerp(g.hip, g.waist, (y - hips.y) / (topY - hips.y))), () => MIN_GAP, (y) => Math.min(1, Math.max(0, (crotchY + 6 * s - y) / (8 * s))), 2, 10);
-    // 바짓가랑이
-    if (hemY < crotchY) {
-      for (const side of [0, 1]) {
-        limbTube(legV[side], [0, 0, 0], UP, hemY, crotchY + 1, (y) => legGc(y) / (2 * Math.PI), MIN_GAP, 3, 12);
-      }
+    const thighRing = legLv[3];
+    const gHem = g.hem ?? g.thigh * (spec.style === "shorts" ? 0.95 : 0.72);
+    let yTopT = -Infinity, yHemT = Infinity;
+    for (let i = 0; i < nq; i++) {
+      yTopT = Math.max(yTopT, Q[i * 3 + 1]);
+      yHemT = Math.min(yHemT, Q[i * 3 + 1]);
     }
-    const waistEase = g.waist - circAt(torso, topY);
+    const mapY = (y: number) =>
+      y >= crotchY ? crotchY + ((y - crotchY) * (topY - crotchY)) / Math.max(1, yTopT - crotchY) : crotchY - ((crotchY - y) * (crotchY - hemY)) / Math.max(1, crotchY - yHemT);
+    const gcTorso = (y: number) => (y <= hips.y ? g.hip : lerp(g.hip, g.waist, (y - hips.y) / Math.max(1, topY - hips.y)));
+    const legGc = (y: number) => (y >= thighRing.y ? g.thigh : lerp(gHem, g.thigh, (y - hemY) / Math.max(1, thighRing.y - hemY)));
+    for (let i = 0; i < nq; i++) {
+      const P: V3 = [Q[i * 3], Q[i * 3 + 1], Q[i * 3 + 2]];
+      const lw = smooth(0.3, 0.7, wLeg[i]);
+      const y2 = mapY(P[1]);
+      move(torsoS, P, P[1], y2, (gcTorso(y2) - gTorso.perim(P[1])) / TAU, MIN_GAP, pt);
+      if (lw > 0) {
+        const sd = side(P[0]);
+        move(legS[sd], P, P[1], y2, (legGc(y2) - gLeg[sd].perim(P[1])) / TAU, MIN_GAP, pl);
+      }
+      for (let d = 0; d < 3; d++) positions[i * 3 + d] = pt[d] + (pl[d] - pt[d]) * lw;
+      if (lw > 0.5) heatColor(legGc(y2) - legS[side(P[0])].perim(y2), 3, 12, heat, i * 3);
+      else heatColor(gcTorso(y2) - torsoS.perim(y2), 2, 10, heat, i * 3);
+    }
+    for (let i = 0; i < nb; i++) {
+      const y = pos[i * 3 + 1];
+      if (model.armF[i] < 77 && y >= hemY + 2.5 && y <= topY - 2.5) covers[i] = 1;
+    }
+    const waistEase = g.waist - circAt(torsoLv, topY);
     const hipEase = g.hip - hips.c;
     const thighEase = g.thigh - thighRing.c;
     report.push({ part: "허리", text: `${signed(waistEase)} 여유`, level: judge(waistEase, 1, 6) });
     report.push({ part: "엉덩이", text: `${signed(hipEase)} 여유`, level: judge(hipEase, 2, 10) });
     report.push({ part: "허벅지", text: `${signed(thighEase)} 여유`, level: judge(thighEase, 3, 12) });
-    const ankleY = legLevels[0].y;
-    report.push({ part: "기장", text: Math.abs(hemY - ankleY) < 3 ? "복숭아뼈까지 와요" : hemY < ankleY ? `복숭아뼈보다 ${Math.round(ankleY - hemY)}cm 길어요` : `복숭아뼈보다 ${Math.round(hemY - ankleY)}cm 짧아요` });
-  }
-
-  return { spec, positions: new Float32Array(sheet.pos), index: new Uint32Array(sheet.idx), heat: new Float32Array(sheet.heat), report };
-}
-
-/* ───────── 옷 천 만들기 도우미 ───────── */
-
-type V3 = [number, number, number];
-const KT = 64; // 몸통 고리 하나의 점 개수
-const KL = 32; // 팔·다리 고리 하나의 점 개수
-
-const cross = (a: V3, b: V3): V3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-const norm = (a: V3): V3 => {
-  const l = Math.hypot(a[0], a[1], a[2]) || 1;
-  return [a[0] / l, a[1] / l, a[2] / l];
-};
-const ellipsePerim = (a: number, b: number) => Math.PI * (3 * (a + b) - Math.sqrt((3 * a + b) * (a + 3 * b)));
-
-/** from~to를 약 step 간격으로 (양 끝 포함) */
-function steps(from: number, to: number, step: number) {
-  const m = Math.max(1, Math.round((to - from) / step));
-  return Array.from({ length: m + 1 }, (_, i) => from + ((to - from) * i) / m);
-}
-
-/** 중심 c, 축 w 둘레를 k칸으로 나눠, 칸마다 몸이 가장 멀리 나온 거리 (빈 칸은 이웃으로 채워요) */
-function sectors(list: number[], pos: Float32Array, c: V3, u: V3, v: V3, w: V3, band: number, k: number, xMax = Infinity, fillGaps = true) {
-  const r = new Float32Array(k).fill(-1);
-  for (const i of list) {
-    const a = i * 3;
-    const dx = pos[a] - c[0], dy = pos[a + 1] - c[1], dz = pos[a + 2] - c[2];
-    if (Math.abs(dx * w[0] + dy * w[1] + dz * w[2]) > band || Math.abs(pos[a]) > xMax) continue;
-    const pu = dx * u[0] + dy * u[1] + dz * u[2];
-    const pv = dx * v[0] + dy * v[1] + dz * v[2];
-    const j = ((Math.round((Math.atan2(pv, pu) / (2 * Math.PI)) * k) % k) + k) % k;
-    r[j] = Math.max(r[j], Math.hypot(pu, pv));
-  }
-  const filled = [...r.keys()].filter((j) => r[j] >= 0);
-  if (!filled.length || !fillGaps) return r.map((x) => Math.max(0, x));
-  for (let j = 0; j < k; j++) {
-    if (r[j] >= 0) continue;
-    let p = j, q = j, dp = 0, dq = 0;
-    while (r[(p = (p - 1 + k) % k)] < 0) dp++;
-    while (r[(q = (q + 1) % k)] < 0) dq++;
-    r[j] = (r[p] * (dq + 1) + r[q] * (dp + 1)) / (dp + dq + 2);
-  }
-  // 칸 사이 들쭉날쭉한 것 다듬기 (안쪽으로는 줄이지 않아요)
-  const c0 = r.slice();
-  for (let j = 0; j < k; j++) r[j] = Math.max(c0[j], (c0[(j + k - 1) % k] + c0[j] + c0[(j + 1) % k]) / 3);
-  return r;
-}
-
-function polyPerim(r: Float32Array) {
-  const k = r.length;
-  let sum = 0;
-  for (let j = 0; j < k; j++) {
-    const a = (j / k) * 2 * Math.PI, b = ((j + 1) / k) * 2 * Math.PI;
-    const r2 = r[(j + 1) % k];
-    sum += Math.hypot(r2 * Math.cos(b) - r[j] * Math.cos(a), r2 * Math.sin(b) - r[j] * Math.sin(a));
-  }
-  return sum;
-}
-
-/** 값이 없는 줄(NaN)은 가까운 줄 값으로 */
-function fillRows(rows: number[][]) {
-  const ok = rows.map((r) => Number.isFinite(r[0]));
-  const first = ok.indexOf(true);
-  if (first < 0) return rows.map(() => [0, 0, 0]);
-  let last = rows[first];
-  return rows.map((r, i) => (ok[i] ? (last = r) : i < first ? rows[first] : last));
-}
-
-/** 위아래 줄끼리 부드럽게 (두 번) */
-function smoothRows(rows: number[][]) {
-  let cur = rows;
-  for (let pass = 0; pass < 2; pass++) {
-    cur = cur.map((r, i) => r.map((x, d) => (i === 0 || i === cur.length - 1 ? x : (cur[i - 1][d] + x + cur[i + 1][d]) / 3)));
-  }
-  return cur;
-}
-
-/** 몸 단면의 잡음(듬성듬성한 정점 때문에 생기는 들쭉날쭉)을 없애요: 위아래 이웃 중 큰 값 → 평균 */
-function cleanBodies(b: Float32Array[]) {
-  const W = 2;
-  const at = (arr: Float32Array[], i: number, j: number) => arr[Math.min(arr.length - 1, Math.max(0, i))][j];
-  const dil = b.map((row, i) => row.map((_, j) => Math.max(...[-W, -1, 0, 1, W].map((d) => at(b, i + d, j)))));
-  return dil.map((row, i) => row.map((_, j) => Math.max(b[i][j], [-W, -1, 0, 1, W].reduce((sum, d) => sum + at(dil, i + d, j), 0) / 5)));
-}
-
-/** 고리 반지름을 위아래로 부드럽게 하되, 몸 안으로는 들어가지 않게 */
-function relax(rows: { body: Float32Array; R: number[] }[]) {
-  for (let pass = 0; pass < 6; pass++) {
-    const prev = rows.map((r) => r.R.slice());
-    rows.forEach((row, i) => {
-      if (i === 0 || i === rows.length - 1) return;
-      row.R = row.R.map((_, j) => Math.max(row.body[j] + MIN_GAP, (prev[i - 1][j] + prev[i][j] * 2 + prev[i + 1][j]) / 4));
-    });
-  }
-}
-
-function ring(c: V3, u: V3, v: V3, R: number[]) {
-  const out: number[] = [];
-  R.forEach((r, j) => {
-    const th = (j / R.length) * 2 * Math.PI;
-    const a = Math.cos(th) * r, b = Math.sin(th) * r;
-    out.push(c[0] + u[0] * a + v[0] * b, c[1] + u[1] * a + v[1] * b, c[2] + u[2] * a + v[2] * b);
-  });
-  return out;
-}
-
-function heatOf(ease: number, fitFrom: number, looseFrom: number) {
-  const out = new Float32Array(3);
-  heatColor(ease, fitFrom, looseFrom, out, 0);
-  return out;
-}
-
-/** 고리들을 이어 붙여 천(삼각형)으로 만들어요 */
-class Sheet {
-  pos: number[] = [];
-  heat: number[] = [];
-  idx: number[] = [];
-  tube(rings: number[][], heats: Float32Array[], k: number) {
-    const base = this.pos.length / 3;
-    rings.forEach((r, i) => {
-      this.pos.push(...r);
-      for (let j = 0; j < k; j++) this.heat.push(heats[i][0], heats[i][1], heats[i][2]);
-    });
-    for (let i = 0; i + 1 < rings.length; i++) {
-      for (let j = 0; j < k; j++) {
-        const a = base + i * k + j, b = base + i * k + ((j + 1) % k);
-        const c = a + k, d = b + k;
-        this.idx.push(a, c, b, b, c, d);
-      }
+    if (spec.style === "shorts") {
+      const kneeY = legLv[2].y;
+      report.push({ part: "기장", text: hemY > kneeY ? `무릎 위 ${Math.round(hemY - kneeY)}cm` : "무릎을 덮어요" });
+    } else {
+      const ankleY = legLv[0].y;
+      report.push({
+        part: "기장",
+        text: Math.abs(hemY - ankleY) < 3 ? "복숭아뼈까지 와요" : hemY < ankleY ? `복숭아뼈보다 ${Math.round(ankleY - hemY)}cm 길어요` : `복숭아뼈보다 ${Math.round(hemY - ankleY)}cm 짧아요`,
+      });
     }
   }
+
+  return { spec, template: tpl.key, positions, index: tpl.index, heat, covers, report, hemY: topHem };
 }
+
+/** 성별·옷 모양에 맞는 옷 본 이름 */
+export const templateKeyFor = (spec: GarmentSpec, gender: Gender) => templateFor(spec.style, gender);
 
 /* ───────── 옷 색 ───────── */
 
