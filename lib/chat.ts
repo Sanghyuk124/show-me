@@ -27,6 +27,12 @@ export interface ChatTurn {
 /** 채팅 첫 화면의 예시 대화 아래 추천 답변 */
 export const FIRST_CHIPS = ["자유로운 편이에요", "아직 잘 모르겠어요"];
 
+/** 채팅 첫 화면의 추천 질문 칩 (성별마다). 미리 세팅해 둔 추천 답변으로 이어져요 */
+export const START_CHIPS: Record<Profile["gender"], string[]> = {
+  female: ["첫 출근 룩 추천해줘", "캐주얼하게 입을 옷 추천해줘"],
+  male: ["내일 날씨 춥다는데 입을 옷 추천해줘"],
+};
+
 /** 서버로 보내는 사용자 정보 (Claude가 맞춤 답변에 참고해요) */
 export interface ChatContext {
   profile: Profile;
@@ -115,6 +121,22 @@ async function cannedReply(message: string, app: AppState): Promise<Reply> {
       text: "새로 사지 않아도 옷장에 딱 맞는 조합이 있어요.\n던스트 70S 세미 플레어 진(S)에 미세키서울 언밸런스 니트 가디건을 걸치면 편하면서도 멋스러운 캐주얼 룩이 돼요.\n둘 다 판매처 실측을 저장해 둔 옷이라 정핏으로 입을 수 있어요. 가디건은 단추를 비대칭으로 잠가 포인트를 줘 보세요.",
       closet: closetRule.samples,
       chips: ["다른 코디도 볼래요", "신발은 뭐가 좋을까요?"],
+    };
+  }
+
+  // 날씨가 춥다는 질문: 옷장 옷으로 따뜻하게 겹쳐 입는 코디
+  if (/춥|쌀쌀|추워|추운|날씨/.test(text)) {
+    const names = myCloset(app).map((i) => i.name);
+    const pick = (re: RegExp) => names.find((n) => re.test(n));
+    const outer = pick(/가디건|후드|재킷|코트|점퍼/);
+    const inner = pick(/롱슬리브|니트|맨투맨|셔츠/);
+    const bottom = pick(/데님|팬츠|슬랙스|바지/);
+    const look = [inner, outer, bottom].filter(Boolean).join(" + ");
+    return {
+      text: look
+        ? `추운 날엔 옷장에 있는 옷을 겹쳐 입는 게 가장 따뜻해요.\n${look} 조합을 추천해요.\n안쪽은 얇게, 바깥은 도톰하게 입으면 실내에서 벗기도 편해요. 목도리나 비니를 더하면 체감 온도가 확 달라져요.`
+        : "추운 날엔 얇은 옷을 여러 겹 겹쳐 입는 게 가장 따뜻해요.\n옷장에 니트나 아우터를 등록해 두면 가진 옷으로 코디를 골라 드릴게요.",
+      chips: ["신발은 뭐가 좋을까요?", "다른 코디도 볼래요"],
     };
   }
 
