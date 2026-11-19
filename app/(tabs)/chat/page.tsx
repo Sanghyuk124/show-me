@@ -4,17 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import { ProductDetailModal } from "@/components/MeasureModal";
 import { useRouter } from "next/navigation";
 import { TabHeader } from "@/components/ui";
-import { getReply } from "@/lib/chat";
+import { FIRST_CHIPS, getReply } from "@/lib/chat";
+import { shrinkPhoto, videoFrames } from "@/lib/media";
 import { CART_SEED } from "@/lib/data";
-import { setApp, useApp, type ChatMessage } from "@/lib/store";
+import { setApp, showToast, useApp, type ChatMessage } from "@/lib/store";
 
 const OUTFIT = [
   { id: "shirt", label: "셔츠", name: "아이보리 셔츠", src: "/images/closet/shirt.jpg" },
   { id: "slacks", label: "슬랙스", name: "블랙 슬랙스", src: "/images/closet/slacks.jpg" },
   { id: "cardigan", label: "가디건", name: "네이비 가디건", src: "/images/closet/cardigan.jpg" },
 ];
+const MAX_ATTACH = 4;
 const newId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-const FIRST_CHIPS = ["자유로운 편이에요", "아직 잘 모르겠어요"];
 
 // Figma 05 · 쇼핑메이트 채팅 — 값은 Figma 레이어 수치 그대로입니다.
 function UserBubble({ children }: { children: React.ReactNode }) {
@@ -73,8 +74,28 @@ function FirstAdvice({ onOpen }: { onOpen: (id: string) => void }) {
   );
 }
 
+/** 사용자가 첨부한 사진(또는 영상 장면) 묶음 */
+function Attached({ images, video }: { images: string[]; video?: boolean }) {
+  return (
+    <div className="flex w-[292px] max-w-full flex-col items-end gap-1 self-end">
+      <div className="flex flex-wrap justify-end gap-1">
+        {images.map((src, i) => (
+          <img key={i} src={src} alt={video ? `영상 장면 ${i + 1}` : `첨부 사진 ${i + 1}`} className="size-[68px] rounded-[8.93px] object-cover" />
+        ))}
+      </div>
+      {video && <span className="text-[10px] leading-[1.4] text-sub">영상에서 뽑은 장면 {images.length}장</span>}
+    </div>
+  );
+}
+
 function Message({ m }: { m: ChatMessage }) {
-  if (m.role === "user") return <UserBubble>{m.text}</UserBubble>;
+  if (m.role === "user")
+    return (
+      <>
+        {m.images?.length ? <Attached images={m.images} video={m.video} /> : null}
+        {m.text && <UserBubble>{m.text}</UserBubble>}
+      </>
+    );
   return (
     <div className="animate-rise flex w-full flex-col gap-[9.1px]">
       <BotName />
@@ -89,6 +110,10 @@ export default function ChatPage() {
   const [text, setText] = useState("");
   const [typing, setTyping] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
+  // + 버튼으로 고른 첨부 (사진 최대 4장, 또는 영상에서 뽑은 4장면)
+  const [attached, setAttached] = useState<{ images: string[]; video: boolean } | null>(null);
+  const [preparing, setPreparing] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const detailItem = app.closet.find((i) => i.id === detailId);
   const listRef = useRef<HTMLElement>(null);
   const last = app.chat.at(-1);
@@ -104,13 +129,36 @@ export default function ChatPage() {
     return () => cancelAnimationFrame(id);
   }, [app.chat.length, typing, chips.length]);
 
+  const onFiles = async (list: FileList | null) => {
+    const files = Array.from(list ?? []);
+    if (!files.length) return;
+    setPreparing(true);
+    try {
+      const video = files.find((f) => f.type.startsWith("video/"));
+      if (video) {
+        setAttached({ images: await videoFrames(video, MAX_ATTACH), video: true });
+      } else {
+        const keep = attached && !attached.video ? attached.images : [];
+        const room = MAX_ATTACH - keep.length;
+        if (files.length > room) showToast(`사진은 한 번에 ${MAX_ATTACH}장까지 보낼 수 있어요.`);
+        const added = await Promise.all(files.filter((f) => f.type.startsWith("image/")).slice(0, room).map(shrinkPhoto));
+        if (keep.length + added.length) setAttached({ images: [...keep, ...added], video: false });
+      }
+    } catch {
+      showToast("파일을 불러오지 못했어요. 다른 사진이나 영상으로 시도해 주세요.");
+    }
+    setPreparing(false);
+  };
+
   const send = async (raw: string) => {
     const value = raw.trim();
-    if (!value || typing) return;
+    const images = attached?.images ?? [];
+    if ((!value && !images.length) || typing || preparing) return;
     setText("");
+    setAttached(null);
     setTyping(true);
-    setApp((s) => ({ chat: [...s.chat, { id: newId(), role: "user", text: value }] }));
-    const reply = await getReply(value, app);
+    setApp((s) => ({ chat: [...s.chat, { id: newId(), role: "user", text: value, ...(images.length ? { images, video: attached?.video } : {}) }] }));
+    const reply = await getReply(value, images, app);
     setApp((s) => ({ chat: [...s.chat, { id: newId(), role: "bot", ...reply }] }));
     setTyping(false);
   };
@@ -119,7 +167,8 @@ export default function ChatPage() {
     <>
       <TabHeader title="쇼핑메이트" />
       <main ref={listRef} className="no-scrollbar flex min-h-0 flex-1 flex-col gap-[13.66px] overflow-y-auto px-[21.4px] pt-4 pb-[13.66px]">
-        <FirstAdvice onOpen={setDetailId} />
+        {/* 예시 상담은 첫 메시지를 보내면 사라져요 */}
+        {app.chat.length === 0 && !typing && <FirstAdvice onOpen={setDetailId} />}
         {app.chat.map((m) => (
           <Message key={m.id} m={m} />
         ))}
@@ -146,6 +195,31 @@ export default function ChatPage() {
             ))}
           </div>
         )}
+        {(attached || preparing) && (
+          <div className="flex items-center gap-1.5">
+            {preparing && <span className="animate-pulse text-[10px] text-sub">첨부를 준비하고 있어요…</span>}
+            {attached?.images.map((src, i) => (
+              <div key={i} className="relative">
+                <img src={src} alt={`첨부 ${i + 1}`} className="size-12 rounded-[7px] object-cover" />
+                {!attached.video && (
+                  <button
+                    type="button"
+                    aria-label={`첨부 ${i + 1} 빼기`}
+                    onClick={() => setAttached((a) => (a && a.images.length > 1 ? { ...a, images: a.images.filter((_, j) => j !== i) } : null))}
+                    className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-ink/80 text-[10px] leading-none text-white"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+            {attached?.video && (
+              <button type="button" onClick={() => setAttached(null)} className="ml-1 text-[10px] text-sub underline underline-offset-2">
+                영상 빼기
+              </button>
+            )}
+          </div>
+        )}
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -153,9 +227,20 @@ export default function ChatPage() {
           }}
           className="flex items-center gap-[7.6px] rounded-[12.5px] border-[0.9px] border-line bg-white px-[12.5px] py-[11.25px] leading-[1.4] focus-within:border-plum"
         >
-          <button type="button" aria-label="상품 링크 추가" onClick={() => router.push("/closet/link")} className="text-[17.9px] text-plum">
+          <button type="button" aria-label="사진·영상 첨부" onClick={() => fileRef.current?.click()} className="text-[17.9px] text-plum">
             ＋
           </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*,video/*"
+            multiple
+            hidden
+            onChange={(e) => {
+              onFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
           <input
             value={text}
             aria-label="메시지"
@@ -163,7 +248,7 @@ export default function ChatPage() {
             onChange={(e) => setText(e.target.value)}
             className="min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-[10px] placeholder:text-sub"
           />
-          <button type="submit" aria-label="보내기" disabled={!text.trim() || typing} className="text-[17.9px] font-bold text-plum disabled:opacity-40">
+          <button type="submit" aria-label="보내기" disabled={(!text.trim() && !attached) || typing || preparing} className="text-[17.9px] font-bold text-plum disabled:opacity-40">
             ↑
           </button>
         </form>

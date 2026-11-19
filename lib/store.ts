@@ -20,6 +20,10 @@ export interface ChatMessage {
   role: "user" | "bot";
   text: string;
   chips?: string[];
+  /** 사용자가 첨부한 사진(영상은 장면 사진으로 바꿔서) — 작게 줄인 JPEG data URL */
+  images?: string[];
+  /** 첨부가 영상에서 뽑은 장면인지 */
+  video?: boolean;
 }
 
 export interface AppState {
