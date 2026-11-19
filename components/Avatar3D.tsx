@@ -26,6 +26,7 @@ const PALETTE = {
 const CLOTH_GLSL = /* glsl */ `
 uniform float uHipsY, uWaistY, uBustY, uUnderY, uCrotchY, uHipsHalf, uHipsZ, uShoulderY, uTorsoZ, uBreastX;
 uniform float uMale;
+uniform float uNoBra;
 uniform vec3 uSkin, uCloth;
 varying vec3 vRest;
 varying float vArm;
@@ -55,6 +56,7 @@ float clothMask(vec3 p) {
   float cup = front * bandY(p.y, yU, cupTop) * (1.0 - smoothstep(1.7, 1.8, ub));
   float strap = (1.0 - smoothstep(0.5, 0.62, abs(ax - uBreastX * 1.02))) * bandY(p.y, yU, uShoulderY + 7.0);
   strap *= 1.0 - front * (1.0 - smoothstep(cupTop - 0.8, cupTop - 0.4, p.y)); // 앞쪽은 컵 위로만
+  if (uNoBra > 0.5) return brief; // 2D로 상의를 입었을 때는 브라를 숨겨요 (어깨끈이 옷 밖으로 보이지 않게)
   return max(max(brief, band), max(cup, strap));
 }
 `;
@@ -74,6 +76,7 @@ function createBody(model: AvatarModel, gender: BodyShape["gender"]) {
   eyes.setIndex(new THREE.BufferAttribute(model.eyeIndex, 1));
 
   const skinMat = new THREE.MeshStandardMaterial({ color: pal.skin, roughness: 0.78, metalness: 0 });
+  const noBra = { value: 0 }; // 1이면 브라를 숨겨요 (2D 입어보기에서 상의를 입었을 때)
   skinMat.onBeforeCompile = (shader) => {
     const u = shader.uniforms;
     u.uHipsY = { value: lm.hipsY };
@@ -87,6 +90,7 @@ function createBody(model: AvatarModel, gender: BodyShape["gender"]) {
     u.uTorsoZ = { value: lm.torsoZ };
     u.uBreastX = { value: lm.breastX };
     u.uMale = { value: gender === "male" ? 1 : 0 };
+    u.uNoBra = noBra;
     u.uSkin = { value: new THREE.Color(pal.skin) };
     u.uCloth = { value: new THREE.Color(pal.cloth) };
     shader.vertexShader = shader.vertexShader
@@ -103,7 +107,7 @@ function createBody(model: AvatarModel, gender: BodyShape["gender"]) {
   const group = new THREE.Group();
   group.add(new THREE.Mesh(body, skinMat));
   group.add(new THREE.Mesh(eyes, new THREE.MeshStandardMaterial({ color: pal.eye, roughness: 0.35, metalness: 0 })));
-  return { group, body, eyes, position };
+  return { group, body, eyes, position, noBra };
 }
 
 /**
@@ -202,6 +206,22 @@ const VIEWS = [
 
 /* ───────── 화면 컴포넌트 ───────── */
 
+/**
+ * 2D 입어보기용: 정면 화면에서 몸의 기준 위치.
+ * 화면 좌표(px) = (ox + x·sx, oy − y·sy) — x·y는 몸 좌표(cm, 바닥 0, 몸 가운데 x=0)
+ */
+export interface BodyLayout {
+  sx: number;
+  sy: number;
+  ox: number;
+  oy: number;
+  /** 몸 기준 (cm): 어깨 끝 좌우 x·높이, 가랑이·키 높이, 둘레 위치마다 높이와 좌우 끝 x */
+  shoulder: { xl: number; xr: number; y: number };
+  crotchY: number;
+  height: number;
+  rings: Record<"bust" | "waist" | "hips" | "thigh" | "knee" | "ankle", { y: number; xl: number; xr: number }>;
+}
+
 export interface GarmentReport {
   name: string;
   kind: GarmentSpec["kind"];
@@ -215,6 +235,9 @@ export function Avatar3D({
   garments = [],
   fitView = false,
   onReport,
+  flat = false,
+  onLayout,
+  children,
 }: {
   shape: BodyShape;
   className?: string;
@@ -224,14 +247,24 @@ export function Avatar3D({
   /** true면 옷 색 대신 부위별 핏 색 (끼어요·딱 붙어요·잘 맞아요·넉넉해요) */
   fitView?: boolean;
   onReport?: (r: GarmentReport[]) => void;
+  /** true면 2D 입어보기: 정면에 고정하고 3D 옷은 그리지 않아요 (핏 설명은 계산해요) */
+  flat?: boolean;
+  /** 정면 화면에서의 몸 기준 위치 (2D 옷을 겹칠 때 써요) */
+  onLayout?: (l: BodyLayout) => void;
+  /** 3D 화면 위에 겹쳐 그릴 것 (2D 옷) */
+  children?: React.ReactNode;
 }) {
   const boxRef = useRef<HTMLDivElement>(null);
-  type Scene = { shape: BodyShape; garments: GarmentSpec[]; fitView: boolean };
+  type Scene = { shape: BodyShape; garments: GarmentSpec[]; fitView: boolean; flat: boolean };
   const api = useRef<{ setBody: (s: Scene) => void; setView: (rot: number) => void } | null>(null);
   const reportRef = useRef(onReport);
+  const layoutRef = useRef(onLayout);
+  const flatRef = useRef(flat);
   useEffect(() => {
     reportRef.current = onReport;
-  }, [onReport]);
+    layoutRef.current = onLayout;
+    flatRef.current = flat;
+  }, [onReport, onLayout, flat]);
   const [failed, setFailed] = useState(false);
   const [view, setView] = useState(0);
 
@@ -296,6 +329,52 @@ export function Avatar3D({
       camera.position.set(0, frameH * 0.5, dist);
       camera.lookAt(0, frameH * 0.48, 0);
       camera.updateProjectionMatrix();
+      camera.updateMatrixWorld();
+      reportLayout();
+    };
+
+    // 2D 입어보기: 정면(회전 0)에서 몸 기준점들이 화면 어디에 오는지 알려 줘요
+    let layoutSrc: { model: AvatarModel; pos: Float32Array; height: number } | null = null;
+    const reportLayout = () => {
+      if (!layoutSrc || !layoutRef.current) return;
+      const { model, pos, height } = layoutSrc;
+      const w = box.clientWidth || 1;
+      const h = box.clientHeight || 1;
+      const toPx = (x: number, y: number) => {
+        const v = new THREE.Vector3(x, y, 0).project(camera);
+        return [((v.x + 1) / 2) * w, ((1 - v.y) / 2) * h];
+      };
+      const [ox, oy] = toPx(0, 0);
+      const [x1] = toPx(10, 0);
+      const [, y1] = toPx(0, 10);
+      const ring = (name: string) => {
+        const idx = model.rulers[name];
+        let y = 0, xl = Infinity, xr = -Infinity;
+        for (const i of idx) {
+          y += pos[i * 3 + 1];
+          xl = Math.min(xl, pos[i * 3]);
+          xr = Math.max(xr, pos[i * 3]);
+        }
+        return { y: y / idx.length, xl, xr };
+      };
+      const [a, b] = model.shoulderTips.map((i) => i * 3);
+      layoutRef.current({
+        sx: (x1 - ox) / 10,
+        sy: (oy - y1) / 10,
+        ox,
+        oy,
+        shoulder: { xl: Math.min(pos[a], pos[b]), xr: Math.max(pos[a], pos[b]), y: (pos[a + 1] + pos[b + 1]) / 2 },
+        crotchY: pos[model.crotch * 3 + 1],
+        height,
+        rings: {
+          bust: ring("bust"),
+          waist: ring("waist"),
+          hips: ring("hips"),
+          thigh: ring("thigh"),
+          knee: ring("knee"),
+          ankle: ring("ankle"),
+        },
+      });
     };
 
     let pending = 0;
@@ -344,6 +423,11 @@ export function Avatar3D({
         if (!tpl) continue;
         const gm = buildGarment(model, body.position.array as Float32Array, spec, tpl, spec.kind === "top" ? bottomMesh : undefined);
         if (spec.kind === "bottom") bottomMesh = gm;
+        // 2D 입어보기에서는 핏 설명만 쓰고 3D 옷은 그리지 않아요
+        if (flatRef.current) {
+          reports.push({ name: spec.name, kind: spec.kind, lines: gm.report });
+          continue;
+        }
         gm.covers.forEach((c, i) => c && (covered[i] = 1));
         const geo = garmentGeometry(gm, tpl);
         // 천의 주름·결(노멀맵)과 접힌 곳 그림자(AO)는 MakeHuman 옷 이미지를 써요
@@ -370,6 +454,9 @@ export function Avatar3D({
       body.body.setIndex(new THREE.BufferAttribute(visibleIndex(model.index, covered), 1));
       reportRef.current?.(reports);
 
+      layoutSrc = { model, pos: body.position.array as Float32Array, height: s.height };
+      body.noBra.value = flatRef.current && wear.some((w) => w.kind === "top") ? 1 : 0;
+      if (flatRef.current) target = Math.round(rot / (Math.PI * 2)) * Math.PI * 2; // 정면으로
       frameH = Math.max(s.height, 175) + 8;
       fit();
     };
@@ -390,6 +477,7 @@ export function Avatar3D({
     // 드래그로 회전
     let dragX: number | null = null;
     const down = (e: PointerEvent) => {
+      if (flatRef.current) return; // 2D 입어보기는 정면 고정
       dragX = e.clientX;
       renderer.domElement.setPointerCapture(e.pointerId);
     };
@@ -439,7 +527,7 @@ export function Avatar3D({
   }, []);
 
   // 치수가 바뀌면 바로 몸 모양을 다시 만들어요.
-  const key = JSON.stringify({ shape, garments, fitView });
+  const key = JSON.stringify({ shape, garments, fitView, flat });
   useEffect(() => {
     api.current?.setBody(JSON.parse(key));
   }, [key]);
@@ -450,14 +538,15 @@ export function Avatar3D({
         ref={boxRef}
         role="img"
         aria-label={`3D 아바타 · 키 ${Math.round(shape.height)}cm, 몸무게 ${Math.round(shape.weight)}kg`}
-        className="absolute inset-0 cursor-grab active:cursor-grabbing"
+        className={cn("absolute inset-0", !flat && "cursor-grab active:cursor-grabbing")}
       />
+      {children && <div className="pointer-events-none absolute inset-0">{children}</div>}
       {failed && (
         <p className="absolute inset-0 flex items-center justify-center px-4 text-center text-[11px] text-sub">
           이 기기에서는 3D 아바타를 표시할 수 없어요.
         </p>
       )}
-      {controls && !failed && (
+      {controls && !flat && !failed && (
         <div className="absolute bottom-1 left-1/2 flex -translate-x-1/2 gap-1">
           {VIEWS.map((v, i) => (
             <button
