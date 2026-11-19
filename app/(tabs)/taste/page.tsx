@@ -52,7 +52,11 @@ export default function TastePage() {
   // 처음 들어오면(또는 성별·사진 목록이 바뀌면) 사진을 랜덤으로 섞어요
   const ready = validOrder(tasteOrder ?? [], gender);
   useEffect(() => {
-    if (!ready) setApp(() => ({ tasteOrder: shuffle(TASTE_PHOTOS[gender].map((p) => p.id)), tasteRound: 0 }));
+    // 저장된 값을 다시 확인하고 섞어요 (화면이 막 열릴 때 잠깐 보이는 빈 값으로 덮어쓰지 않게)
+    if (!ready)
+      setApp((s) =>
+        validOrder(s.tasteOrder ?? [], s.profile.gender) ? {} : { tasteOrder: shuffle(TASTE_PHOTOS[s.profile.gender].map((p) => p.id)), tasteRound: 0 },
+      );
   }, [ready, gender]);
   const sets = Math.ceil(TASTE_PHOTOS[gender].length / TASTE_SET_SIZE);
   const round = (tasteRound ?? 0) % sets;

@@ -43,7 +43,9 @@ API 키가 없으면 `lib/chat.ts`의 미리 써둔 예시 답변으로 대신 �
 ## 이미지·아이콘
 
 `public/images/`와 `public/icons/`의 파일은 Figma(Show Me - 수정본)에서 내려받은 원본입니다.
-남성 온보딩 사진은 `style-male-*.jpg`이고, 기본 정보에서 성별을 바꾸면 자동으로 바뀝니다.
+취향 사진은 `public/images/taste/female/`, `male/`에 성별별 18장씩 있어요 (목록: `lib/data.ts`의 `TASTE_LIST`).
+온보딩 '좋아하는 스타일' 화면은 이 중 랜덤 12장, '취향 찾기' 탭은 랜덤 9장 → 저장하면 나머지 9장을 보여 줘요.
+기본 정보에서 성별을 바꾸면 그 성별의 사진으로 바뀝니다.
 
 ## 3D 아바타
 
