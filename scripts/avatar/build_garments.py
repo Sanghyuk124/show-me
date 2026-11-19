@@ -46,14 +46,20 @@ TEMPLATES = [
 ]
 
 
-def load_obj(path):
-    v, faces = [], []
+def load_obj(path, with_uv=False):
+    v, vt, faces, fuv = [], [], [], []
     with open(path) as f:
         for line in f:
             if line.startswith("v "):
                 v.append([float(x) for x in line.split()[1:4]])
+            elif line.startswith("vt "):
+                vt.append([float(x) for x in line.split()[1:3]])
             elif line.startswith("f "):
-                faces.append([int(t.split("/")[0]) - 1 for t in line.split()[1:]])
+                toks = [t.split("/") for t in line.split()[1:]]
+                faces.append([int(t[0]) - 1 for t in toks])
+                fuv.append([int(t[1]) - 1 if len(t) > 1 and t[1] else -1 for t in toks])
+    if with_uv:
+        return np.array(v), faces, np.array(vt), fuv
     return np.array(v), faces
 
 
@@ -108,6 +114,29 @@ def frame(a, b, c):
     return e1, e2, nrm, L
 
 
+TEX_SIZE = 512  # 앱 용량을 줄이려고 작게 줄여요
+
+
+def export_textures(folder, asset, out_dir):
+    """천의 주름·결(노멀맵)과 접힌 곳 그림자(AO)를 작게 줄여 public/models/garments/ 에 저장해요"""
+    from PIL import Image
+
+    out = {}
+    dst = os.path.join(out_dir, "garments")
+    os.makedirs(dst, exist_ok=True)
+    for kind, ext in (("normal", "png"), ("ao", "jpg")):
+        src = os.path.join(folder, f"{asset}_{kind}.png")
+        if not os.path.exists(src):
+            continue
+        name = f"{asset}_{kind}.{ext}"
+        path = os.path.join(dst, name)
+        if not os.path.exists(path):
+            im = Image.open(src).convert("RGB").resize((TEX_SIZE, TEX_SIZE), Image.LANCZOS)
+            im.save(path, quality=85) if ext == "jpg" else im.save(path, optimize=True)
+        out[kind] = f"/models/garments/{name}"
+    return out
+
+
 def build(data_root, clothes_root, out_dir):
     m = MH(data_root)
     base = m.v / 10.0  # MakeHuman 단위(데시미터)로 계산 후 cm로
@@ -147,7 +176,7 @@ def build(data_root, clothes_root, out_dir):
     for key, asset, part, label in TEMPLATES:
         folder = os.path.join(clothes_root, asset)
         refs, scales = load_mhclo(os.path.join(folder, f"{asset}.mhclo"))
-        obj_v, faces = load_obj(os.path.join(folder, f"{asset}.obj"))
+        obj_v, faces, vt, fuv = load_obj(os.path.join(folder, f"{asset}.obj"), with_uv=True)
         n = len(refs)
         assert n == len(obj_v), (asset, n, len(obj_v))
 
@@ -171,11 +200,22 @@ def build(data_root, clothes_root, out_dir):
         vmap = -np.ones(n, int)
         vmap[keep] = np.arange(keep.sum())
         tri = []
-        for f in faces:
+        # 천 무늬(텍스처)용: 같은 점이라도 무늬 좌표가 다르면 나눠요 (split → 원래 점 번호)
+        split_of, split_src, split_uv, stri = {}, [], [], []
+        for f, fu in zip(faces, fuv):
             if not all(keep[i] for i in f):
                 continue
             a = [vmap[i] for i in f]
             tri += [a[0], a[1], a[2]] + ([a[0], a[2], a[3]] if len(a) == 4 else [])
+            sa = []
+            for vi, ti in zip(f, fu):
+                k = (vi, ti)
+                if k not in split_of:
+                    split_of[k] = len(split_src)
+                    split_src.append(vmap[vi])
+                    split_uv.append(vt[ti] if ti >= 0 else [0.0, 0.0])
+                sa.append(split_of[k])
+            stri += [sa[0], sa[1], sa[2]] + ([sa[0], sa[2], sa[3]] if len(sa) == 4 else [])
 
         # 떨어진 거리를 몸 삼각형 기준으로 (크기로 나눠서)
         local = np.zeros((n, 3))
@@ -196,7 +236,11 @@ def build(data_root, clothes_root, out_dir):
         add(f"{key}_off", local[keep].reshape(-1), np.float32)
         add(f"{key}_single", single[keep].astype(np.uint8), np.uint8)
         add(f"{key}_index", np.array(tri), np.uint32)
-        meta = {"key": key, "kind": part, "label": label, "source": asset, "vertexCount": int(keep.sum())}
+        add(f"{key}_split", np.array(split_src), np.uint32)
+        add(f"{key}_uv", np.array(split_uv).reshape(-1), np.float32)
+        add(f"{key}_sindex", np.array(stri), np.uint32)
+        tex = export_textures(folder, asset, out_dir)
+        meta = {"key": key, "kind": part, "label": label, "source": asset, "vertexCount": int(keep.sum()), "splitCount": len(split_src), "textures": tex}
         if key in CYLINDRICAL:
             pc = rest[keep] * 10
             th = np.arctan2(pc[:, 2] - hips_z, pc[:, 0])
