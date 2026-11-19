@@ -63,7 +63,7 @@ export function PhotoLibrary({
         })}
       </div>
       <button type="button" onClick={onDevice} disabled={!!busyId} className="self-center py-1 text-[11px] font-medium text-plum underline underline-offset-2">
-        휴대폰의 다른 사진에서 고르기
+        휴대폰의 다른 사진 불러오기
       </button>
     </Modal>
   );
