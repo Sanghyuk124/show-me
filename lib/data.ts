@@ -106,6 +106,70 @@ export const SAMPLE_PHOTOS: Record<Gender, { id: string; name: string; category:
   ],
 };
 
+/**
+ * 미리 세팅해 둔 판매처 링크 (나의 옷장 → 판매처 링크 입력).
+ * 링크에 match 의 글자가 들어 있으면, 아래 옷 사진(배경을 지워서)·이름·종류와
+ * 구매 사이즈의 실측(cm, 둘레 기준)이 자동으로 들어와요. 사이즈가 목록에 없으면 가장 가까운 걸 써요.
+ *
+ * 실제 상품 링크로 바꾸는 법: match 에 상품 주소의 고유한 부분(예: "musinsa.com/products/1234567")을 넣고,
+ * image 는 public/ 아래 사진 경로, sizes 는 판매처 실측표 값을 넣으면 돼요.
+ * 지금 들어 있는 example.com 주소는 시연·테스트용이에요 (실제 상품 페이지가 아니에요).
+ */
+export interface LinkPreset {
+  match: string[];
+  name: string;
+  category: Category;
+  image: string;
+  sizes: Record<string, Measures>;
+}
+
+export const LINK_PRESETS: LinkPreset[] = [
+  {
+    match: ["example.com/showme/women-cardigan"],
+    name: "아이보리 가디건",
+    category: "outer",
+    image: "/demo-photos/women-cardigan.jpg",
+    sizes: {
+      S: { length: "48", chest: "90", sleeve: "56", shoulder: "36", waist: "84" },
+      M: { length: "50", chest: "94", sleeve: "57", shoulder: "38", waist: "88" },
+      L: { length: "52", chest: "98", sleeve: "58", shoulder: "40", waist: "92" },
+    },
+  },
+  {
+    match: ["example.com/showme/women-denim"],
+    name: "블루 스트레이트 데님",
+    category: "bottom",
+    image: "/demo-photos/women-denim.jpg",
+    sizes: {
+      S: { waist: "66", hip: "90", thigh: "52", rise: "27", length: "95" },
+      M: { waist: "70", hip: "94", thigh: "54", rise: "28", length: "96" },
+      L: { waist: "74", hip: "98", thigh: "56", rise: "29", length: "97" },
+    },
+  },
+  {
+    match: ["example.com/showme/men-knit"],
+    name: "네이비 UCLA 니트",
+    category: "top",
+    image: "/demo-photos/men-knit.jpg",
+    sizes: {
+      M: { length: "66", chest: "112", sleeve: "59", shoulder: "50", waist: "104" },
+      L: { length: "68", chest: "116", sleeve: "60", shoulder: "52", waist: "108" },
+      XL: { length: "70", chest: "120", sleeve: "61", shoulder: "54", waist: "112" },
+    },
+  },
+  {
+    match: ["example.com/showme/men-denim"],
+    name: "블랙 벌룬 데님",
+    category: "bottom",
+    image: "/demo-photos/men-denim.jpg",
+    sizes: {
+      M: { waist: "78", hip: "108", thigh: "70", rise: "31", length: "101" },
+      L: { waist: "82", hip: "112", thigh: "72", rise: "32", length: "102" },
+      XL: { waist: "86", hip: "116", thigh: "74", rise: "33", length: "103" },
+    },
+  },
+];
+
 /** 온보딩 '좋아하는 스타일'(4번째 화면)에 보이는 사진 수. 취향 찾기 사진(아래 TASTE_PHOTOS)에서 성별별로 랜덤으로 골라요. */
 export const STYLE_PICK_COUNT = 12;
 

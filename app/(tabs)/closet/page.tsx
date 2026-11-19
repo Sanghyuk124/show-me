@@ -103,7 +103,16 @@ export default function ClosetPage() {
   const source: NewItemSource | null = photo
     ? { image: photo.cutout, aiImage: photo.original, cutout: photo.ok }
     : app.pendingLink
-      ? { link: app.pendingLink.url, size: app.pendingLink.size }
+      ? {
+          link: app.pendingLink.url,
+          size: app.pendingLink.size,
+          image: app.pendingLink.image,
+          cutout: app.pendingLink.cutout,
+          aiImage: app.pendingLink.aiImage,
+          name: app.pendingLink.name,
+          category: app.pendingLink.category,
+          measures: app.pendingLink.measures,
+        }
       : null;
 
   const closeRegister = () => {

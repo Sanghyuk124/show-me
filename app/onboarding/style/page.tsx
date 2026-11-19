@@ -65,6 +65,12 @@ export default function StyleStep() {
                 )}
               >
                 <img src={p.src} alt="" className="absolute inset-0 size-full object-cover" />
+                {/* 고른 사진: 오른쪽 위 체크 표시 (취향 찾기와 같은 모양) */}
+                {on && (
+                  <span className="absolute top-1.5 right-1.5 flex size-5 items-center justify-center rounded-[10px] bg-plum text-[12px] font-bold text-white">
+                    ✓
+                  </span>
+                )}
               </button>
             );
           })}
