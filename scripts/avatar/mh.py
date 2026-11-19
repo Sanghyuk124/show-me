@@ -39,4 +39,10 @@ class MH:
         rig = os.path.join(self.root, "rigs")
         skel = json.load(open(os.path.join(rig, "default.mhskel")))
         weights = json.load(open(os.path.join(rig, "default_weights.mhw")))["weights"]
+        # 정점마다 뼈 가중치 합이 1이 되도록 (도우미 정점은 합이 1이 아닌 경우가 있어요)
+        total = {}
+        for wl in weights.values():
+            for i, w in wl:
+                total[int(i)] = total.get(int(i), 0.0) + w
+        weights = {b: [[i, w / total[int(i)]] for i, w in wl if total[int(i)] > 0] for b, wl in weights.items()}
         return skel, weights

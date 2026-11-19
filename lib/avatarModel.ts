@@ -28,6 +28,7 @@ interface Header {
 }
 
 export interface AvatarModel {
+  /** 화면에 그리는 몸·눈 정점 수. 그 뒤 정점들은 MakeHuman '타이츠 도우미'(옷을 몸에 묶는 기준, 그리지 않아요) */
   vertexCount: number;
   base: Float32Array;
   index: Uint32Array;
@@ -140,15 +141,16 @@ class Body {
     }
     return sum;
   }
+  // 키·바닥은 그리는 몸 정점으로만 재요 (뒤에 붙은 옷 묶기용 도우미 정점은 빼고)
   minY() {
     let m = Infinity;
-    for (let i = 1; i < this.pos.length; i += 3) if (this.pos[i] < m) m = this.pos[i];
+    for (let i = 1; i < this.model.vertexCount * 3; i += 3) if (this.pos[i] < m) m = this.pos[i];
     return m;
   }
   height() {
     let lo = Infinity;
     let hi = -Infinity;
-    for (let i = 1; i < this.pos.length; i += 3) {
+    for (let i = 1; i < this.model.vertexCount * 3; i += 3) {
       if (this.pos[i] < lo) lo = this.pos[i];
       if (this.pos[i] > hi) hi = this.pos[i];
     }

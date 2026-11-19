@@ -164,11 +164,18 @@ def ruler_length(v, idx):
     return float(sum(np.linalg.norm(v[idx[k]] - v[idx[k - 1]]) for k in range(1, len(idx))))
 
 
+def vertex_order(m):
+    """내보낼 정점 순서: [몸+눈 정점 (그림)] + [타이츠 도우미 정점 (옷 묶기용)]. 반환: (원본 번호 목록, 그리는 정점 수)"""
+    draw = sorted({i for g in ("body", "helper-l-eye", "helper-r-eye") for f in m.faces.get(g, []) for i in f})
+    helper = sorted({i for f in m.faces.get("helper-tights", []) for i in f} - set(draw))
+    return draw + helper, len(draw)
+
+
 def build(data_root, out_dir, gender):
     m = MH(data_root)
     body_faces = m.faces["body"]
     eye_faces = m.faces.get("helper-l-eye", []) + m.faces.get("helper-r-eye", [])
-    used = sorted({i for f in body_faces + eye_faces for i in f})
+    used, n_draw = vertex_order(m)
     remap = {old: new for new, old in enumerate(used)}
 
     base = m.v + m.target(f"macrodetails/asian-{gender}-young.target")
@@ -248,7 +255,8 @@ def build(data_root, out_dir, gender):
         "gender": gender,
         "units": "cm",
         "license": "MakeHuman assets CC0 1.0",
-        "vertexCount": len(used),
+        "vertexCount": n_draw,  # 화면에 그리는 몸·눈 정점 수
+        "helperCount": len(used) - n_draw,  # 그 뒤에 붙은 '타이츠 도우미' 정점 (옷을 몸에 묶는 기준, 그리지 않아요)
         "rulers": {k: [remap[i] for i in v] for k, v in RULERS.items()},
         "shoulderTips": [remap[SHOULDER_TIP], remap[rt]],
         "crotch": remap[crotch_i],
