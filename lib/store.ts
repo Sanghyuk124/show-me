@@ -151,6 +151,16 @@ export function myCloset(app: Pick<AppState, "closet" | "profile">) {
   return app.closet.filter((i) => !i.gender || i.gender === app.profile.gender);
 }
 
+/** 이 브라우저에 저장된 기록상 온보딩을 끝냈는지 (처음 방문이면 false) */
+export function savedOnboarded() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return !!raw && !!JSON.parse(raw).onboarded;
+  } catch {
+    return false;
+  }
+}
+
 /** 화면에서 데이터를 읽을 때: const app = useApp(); */
 export function useApp() {
   return useSyncExternalStore(
