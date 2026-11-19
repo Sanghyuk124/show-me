@@ -34,7 +34,77 @@ export interface Product {
 /** 남성 사용자가 데이트 룩을 물으면 함께 추천할 고정 세트 (시연용) */
 export const DATE_LOOK_MALE = ["dunst-striped-chunky-sweater", "dunst-wide-chino-slacks"];
 
+/** 여성 사용자가 첫 출근 코디를 물으면 함께 추천할 고정 세트 (시연용) */
+export const FIRST_WORK_FEMALE = ["dunst-classic-vneck-sweater", "dunst-semi-bootcut-slacks", "siyazu-boucle-long-coat"];
+
+/** 질문이 데이트 룩 / 첫 출근 코디인지 */
+export const isDateLook = (text: string) => /데이트|소개팅/.test(text);
+export const isFirstWork = (text: string) => /첫\s*출근|출근\s*첫|입사|첫\s*직장|신입|첫날.*(회사|출근)|(회사|출근).*첫날/.test(text);
+
+/** 성별·질문에 맞는 시연용 고정 추천 (없으면 null) */
+export function pinnedPicks(gender: Gender | undefined, text: string) {
+  if (gender === "male" && isDateLook(text)) return DATE_LOOK_MALE;
+  if (gender === "female" && isFirstWork(text)) return FIRST_WORK_FEMALE;
+  return null;
+}
+
 export const PRODUCTS: Product[] = [
+  // ── 여성 첫 출근 룩 고정 추천 (실측은 상품 페이지 사이즈 가이드의 단면 × 2) ──
+  {
+    id: "dunst-classic-vneck-sweater",
+    name: "UNISEX CLASSIC V-NECK SWEATER MELANGE GREY",
+    brand: "던스트",
+    category: "top",
+    price: 76300,
+    image: "/images/products/dunst-classic-vneck-sweater.jpg",
+    link: "https://dunststudio.com/product/detail.html?product_no=5404&cate_no=271&display_group=1",
+    colors: ["멜란지 그레이"],
+    // 사이즈 가이드 (단면): XS 총장56 화장80 가슴50 밑단37.5 팔통18 … XL 총장68 화장88 가슴64 밑단50 팔통23 · 여성 모델 S 착용
+    sizes: {
+      XS: { length: "56", raglan: "80", chest: "100", hem: "75", armWidth: "18" },
+      S: { length: "58", raglan: "82", chest: "104", hem: "79", armWidth: "19" },
+      M: { length: "64", raglan: "84", chest: "120", hem: "92", armWidth: "21" },
+      L: { length: "66", raglan: "86", chest: "124", hem: "96", armWidth: "22" },
+      XL: { length: "68", raglan: "88", chest: "128", hem: "100", armWidth: "23" },
+    },
+    tags: ["미니멀", "오피스", "출근"],
+    desc: "단정한 브이넥 니트, 셔츠 위에 레이어드하기 좋아요. 울 43% · 나일론 42% · 폴리 15%. 화장=목 뒤 중심~소매 끝. 정가 109,000원 (할인가)",
+    pinnedFor: ["여성 첫 출근 룩"],
+  },
+  {
+    id: "dunst-semi-bootcut-slacks",
+    name: "SEMI BOOT-CUT SLIM SLACKS BLACK",
+    brand: "던스트",
+    category: "bottom",
+    price: 113100,
+    image: "/images/products/dunst-semi-bootcut-slacks.jpg",
+    link: "https://dunststudio.com/product/detail.html?product_no=8335&cate_no=24&display_group=1",
+    colors: ["블랙"],
+    // 사이즈 가이드 (단면): S 총장104 허리34.5 힙46 허벅지28.5 밑단23 밑위26 … L 총장108 허리38.5 힙50 허벅지30.5 밑단25 밑위28 · 여성 모델 S 착용
+    sizes: {
+      S: { length: "104", waist: "69", hip: "92", thigh: "57", hem: "46", rise: "26" },
+      M: { length: "106", waist: "73", hip: "96", thigh: "59", hem: "48", rise: "27" },
+      L: { length: "108", waist: "77", hip: "100", thigh: "61", hem: "50", rise: "28" },
+    },
+    tags: ["미니멀", "오피스", "출근"],
+    desc: "다리가 길어 보이는 세미 부츠컷 슬림 슬랙스. 폴리 62% · 레이온 27% · 울 7% · 폴리우레탄 4%. 정가 119,000원 (할인가)",
+    pinnedFor: ["여성 첫 출근 룩"],
+  },
+  {
+    id: "siyazu-boucle-long-coat",
+    name: "SIOT4096 울 블렌드 부클 롱코트 Dark navy",
+    brand: "시야쥬",
+    category: "outer",
+    price: 287200,
+    image: "/images/products/siyazu-boucle-long-coat.jpg",
+    link: "https://m.siyazu.co.kr/product/siot4096-%EC%9A%B8-%EB%B8%94%EB%A0%8C%EB%93%9C-%EB%B6%80%ED%81%B4-%EB%A1%B1%EC%BD%94%ED%8A%B8dark-navy/1206/category/43/display/1/",
+    colors: ["다크 네이비"],
+    // 사이즈 (단면, 원사이즈): 총장 113, 어깨 54, 가슴 56, 소매 길이 54.5, 소매 폭 25
+    sizes: { ONE: { length: "113", shoulder: "54", chest: "112", sleeve: "54.5", armWidth: "25" } },
+    tags: ["미니멀", "오피스", "출근"],
+    desc: "벨트가 있는 울 블렌드 부클 롱코트, 원사이즈. 겉감 울 70% · 나일론 30%, 안감 폴리 100%. 정가 359,000원 (할인가)",
+    pinnedFor: ["여성 첫 출근 룩"],
+  },
   // ── 남성 데이트 룩 고정 추천 (던스트, 실측은 상품 페이지 사이즈 가이드의 단면 × 2) ──
   {
     id: "dunst-striped-chunky-sweater",
