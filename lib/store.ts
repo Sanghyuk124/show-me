@@ -24,6 +24,8 @@ export interface ChatMessage {
   images?: string[];
   /** 첨부가 영상에서 뽑은 장면인지 */
   video?: boolean;
+  /** 쇼핑메이트가 함께 추천한 상품 id (lib/products.ts) */
+  products?: string[];
 }
 
 export interface AppState {

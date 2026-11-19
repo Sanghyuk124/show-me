@@ -3,11 +3,15 @@
 // - 키가 없으면 아래 cannedReply 의 '미리 써둔 예시 답변'으로 대신 답해요.
 
 import type { AppState } from "./store";
+import { guessCategory } from "./classify";
 import { CONCERNS, PERSONAL_COLORS, TASTE_PHOTOS, type ClosetItem, type Measures, type Profile } from "./data";
+import { PRODUCTS } from "./products";
 
 export interface Reply {
   text: string;
   chips?: string[];
+  /** 함께 보여줄 추천 상품 id (lib/products.ts) */
+  products?: string[];
 }
 
 /** 서버로 보내는 대화 한 줄 */
@@ -80,8 +84,8 @@ export async function getReply(message: string, images: string[], app: AppState)
     if (res.status === 503) return fallback(); // API 키가 아직 없어요
     if (res.status === 429) return { text: "지금 질문이 많아서 잠시 후에 다시 답해 드릴게요." };
     if (!res.ok) return { text: "답변을 가져오지 못했어요. 잠시 후 다시 시도해 주세요." };
-    const data: { text?: string } = await res.json();
-    return { text: data.text ?? "답변을 가져오지 못했어요. 잠시 후 다시 시도해 주세요." };
+    const data: { text?: string; products?: string[] } = await res.json();
+    return { text: data.text ?? "답변을 가져오지 못했어요. 잠시 후 다시 시도해 주세요.", products: data.products ?? [] };
   } catch {
     // 서버에 연결할 수 없을 때(오프라인 등)도 예시 답변으로 대신해요.
     return fallback();
@@ -101,6 +105,18 @@ async function attachmentReply(): Promise<Reply> {
 async function cannedReply(message: string, app: AppState): Promise<Reply> {
   await new Promise((r) => setTimeout(r, 700));
   const text = message.trim();
+
+  // 상품 추천을 물으면 상품 목록에서 종류가 맞는 것을 골라 보여줘요.
+  if (/추천|상품|브랜드|살까|사고 싶|구매|쇼핑/.test(text) && PRODUCTS.length) {
+    const category = guessCategory(text);
+    const matched = PRODUCTS.filter((p) => !category || p.category === category || (category === "top" && p.category === "outer"));
+    const picks = (matched.length ? matched : PRODUCTS).slice(0, 2);
+    return {
+      text: "상품 목록에서 지금 옷장과 잘 어울릴 만한 것을 골라봤어요.\n즐겨찾는 기준 옷의 실측을 입력해 두면 맞는 사이즈도 함께 알려드릴게요.",
+      products: picks.map((p) => p.id),
+      chips: ["사이즈가 고민돼요", "다른 코디도 볼래요"],
+    };
+  }
   const bottom = app.closet.find((i) => i.category === "bottom" && i.favorite);
 
   if (/https?:\/\/|www\.|\.com|\.kr/i.test(text)) {
