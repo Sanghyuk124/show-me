@@ -4,7 +4,7 @@
 
 import type { AppState } from "./store";
 import { guessCategory } from "./classify";
-import { CONCERNS, PERSONAL_COLORS, TASTE_PHOTOS, type ClosetItem, type Measures, type Profile } from "./data";
+import { CONCERNS, PERSONAL_COLORS, tastePhoto, type ClosetItem, type Measures, type Profile } from "./data";
 import { PRODUCTS } from "./products";
 
 export interface Reply {
@@ -52,7 +52,7 @@ const FIRST_EXCHANGE: ChatTurn[] = [
 
 function buildContext(app: AppState): ChatContext {
   const count = new Map<string, number>();
-  TASTE_PHOTOS.filter((p) => app.tastePicks.includes(p.id)).forEach((p) => count.set(p.tag, (count.get(p.tag) ?? 0) + 1));
+  app.tastePicks.map(tastePhoto).forEach((p) => p && count.set(p.tag, (count.get(p.tag) ?? 0) + 1));
   const taste = [...count.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([t]) => t).join(" · ");
   return {
     profile: app.profile,

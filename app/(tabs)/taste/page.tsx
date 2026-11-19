@@ -2,13 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cn, TabHeader } from "@/components/ui";
-import { TASTE_PHOTOS, tasteSet } from "@/lib/data";
+import { TASTE_PHOTOS, TASTE_SET_SIZE, tastePhoto, type Gender } from "@/lib/data";
 import { setApp, useApp } from "@/lib/store";
 
 /** 고른 사진의 태그를 세어 많이 나온 순서로 돌려줍니다. */
-function rankTags(picks: number[]) {
+function rankTags(picks: string[]) {
   const count = new Map<string, number>();
-  TASTE_PHOTOS.filter((p) => picks.includes(p.id)).forEach((p) => count.set(p.tag, (count.get(p.tag) ?? 0) + 1));
+  picks.map(tastePhoto).forEach((p) => p && count.set(p.tag, (count.get(p.tag) ?? 0) + 1));
   return [...count.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2);
 }
 
@@ -23,20 +23,49 @@ function Row({ label, title, desc, children }: { label: string; title: string; d
   );
 }
 
+/** 사진 이름들을 랜덤 순서로 섞어요 */
+function shuffle(ids: string[]) {
+  const a = [...ids];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/** 저장해 둔 순서가 지금 성별의 사진 목록과 같은 사진들인지 */
+const validOrder = (order: string[], gender: Gender) => {
+  const ids = TASTE_PHOTOS[gender].map((p) => p.id);
+  return order.length === ids.length && ids.every((id) => order.includes(id));
+};
+
 /** Figma 08 · 취향 찾기 */
 export default function TastePage() {
-  const { tastePicks, tasteRound } = useApp();
+  const { tastePicks, tasteRound, tasteOrder, profile } = useApp();
+  const gender = profile.gender;
   // 지금 묶음에서 고른 사진 (저장하면 tastePicks에 더해지고, 다음 9장으로 넘어가요)
-  const [picked, setPicked] = useState<number[]>([]);
+  const [picked, setPicked] = useState<string[]>([]);
   const [saved, setSaved] = useState(false);
   const timer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
-  const photos = tasteSet(tasteRound ?? 0);
+  // 처음 들어오면(또는 성별·사진 목록이 바뀌면) 사진을 랜덤으로 섞어요
+  const ready = validOrder(tasteOrder ?? [], gender);
+  useEffect(() => {
+    if (!ready) setApp(() => ({ tasteOrder: shuffle(TASTE_PHOTOS[gender].map((p) => p.id)), tasteRound: 0 }));
+  }, [ready, gender]);
+  const sets = Math.ceil(TASTE_PHOTOS[gender].length / TASTE_SET_SIZE);
+  const round = (tasteRound ?? 0) % sets;
+  const photos = ready
+    ? tasteOrder
+        .slice(round * TASTE_SET_SIZE, round * TASTE_SET_SIZE + TASTE_SET_SIZE)
+        .map(tastePhoto)
+        .filter((p) => !!p)
+    : [];
   const ranked = rankTags([...new Set([...tastePicks, ...picked])]);
   const total = ranked.reduce((sum, [, n]) => sum + n, 0);
   const direction = ranked.map(([t]) => t).join(" · ");
-  const toggle = (id: number) => {
+  const toggle = (id: string) => {
     if (saved) return;
     setPicked((cur) => (cur.includes(id) ? cur.filter((n) => n !== id) : [...cur, id]));
   };
@@ -46,7 +75,12 @@ export default function TastePage() {
     setSaved(true);
     // '저장했어요'를 잠깐 보여 준 뒤 다음 9장으로
     timer.current = window.setTimeout(() => {
-      setApp((s) => ({ tasteRound: (s.tasteRound ?? 0) + 1 }));
+      setApp((s) => {
+        const next = (s.tasteRound ?? 0) + 1;
+        // 모든 사진을 다 봤으면 다시 섞어서 처음부터
+        if (next % sets === 0) return { tasteRound: 0, tasteOrder: shuffle(TASTE_PHOTOS[gender].map((p) => p.id)) };
+        return { tasteRound: next };
+      });
       setPicked([]);
       setSaved(false);
     }, 1100);
@@ -66,7 +100,7 @@ export default function TastePage() {
           <span className="shrink-0 font-medium text-plum">{picked.length ? `${picked.length}장 선택` : ""}</span>
         </p>
 
-        <div key={tasteRound} className="mx-auto grid animate-[pop_.35s_ease] grid-cols-[repeat(3,80px)] gap-1.5">
+        <div key={`${tasteRound}-${tasteOrder?.[0]}`} className="mx-auto grid min-h-[312px] animate-[pop_.35s_ease] grid-cols-[repeat(3,80px)] gap-1.5">
           {photos.map((p) => {
             const on = picked.includes(p.id);
             return (
@@ -74,7 +108,7 @@ export default function TastePage() {
                 key={p.id}
                 type="button"
                 aria-pressed={on}
-                aria-label={`취향 사진 ${p.id} · ${p.tag}`}
+                aria-label={`취향 사진 · ${p.tag}`}
                 onClick={() => toggle(p.id)}
                 className="relative h-[100px] w-20 overflow-hidden rounded-[3.3px]"
               >
