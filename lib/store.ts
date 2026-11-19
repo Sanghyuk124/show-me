@@ -13,6 +13,7 @@ import {
   type Measures,
   type Profile,
   DEMO_TODAY,
+  tastePhoto,
 } from "./data";
 
 export interface ChatMessage {
@@ -88,6 +89,8 @@ function load() {
     if (raw) state = { ...initialState, ...JSON.parse(raw) };
     // 예전 버전은 취향 사진을 숫자로 기억했어요 → 이름(문자) 방식으로 바뀌어서 비워요
     if (state.tastePicks.some((x) => typeof x !== "string")) state = { ...state, tastePicks: [], tasteOrder: [], tasteRound: 0 };
+    // 목록에서 빠진 취향 사진은 저장한 선택에서도 빼요
+    else state = { ...state, tastePicks: state.tastePicks.filter((id) => !!tastePhoto(id)) };
   } catch {
     state = initialState;
   }
