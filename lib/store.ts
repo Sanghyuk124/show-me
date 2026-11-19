@@ -54,6 +54,8 @@ export interface AppState {
   saleAlert: boolean;
   selectedDate: string;
   cart: CartItem[];
+  /** 예전 버전에 기본으로 들어 있던 장바구니 예시 옷을 한 번 비웠는지 */
+  cartSeedCleared?: boolean;
   chat: ChatMessage[];
   /** 온보딩(기본 정보·패션 고민·좋아하는 스타일)을 끝냈는지. 끝낸 사용자에게는 다시 보여주지 않아요. */
   onboarded: boolean;
@@ -78,7 +80,8 @@ const initialState: AppState = {
   followed: ["a", "b"],
   saleAlert: true,
   selectedDate: DEMO_TODAY,
-  cart: CART_SEED,
+  cart: [], // 처음엔 빈 장바구니 (채팅에서 '장바구니 담기'로 넣어요)
+  cartSeedCleared: true,
   chat: [],
   onboarded: false,
 };
@@ -92,9 +95,15 @@ function load() {
   loaded = true;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) state = { ...initialState, ...JSON.parse(raw) };
+    const saved = raw ? JSON.parse(raw) : null;
+    if (saved) state = { ...initialState, ...saved };
     // 예전 버전은 취향 사진을 숫자로 기억했어요 → 이름(문자) 방식으로 바뀌어서 비워요
     if (state.tastePicks.some((x) => typeof x !== "string")) state = { ...state, tastePicks: [], tasteOrder: [], tasteRound: 0 };
+    // 예전 버전은 장바구니에 예시 옷 3벌이 기본으로 들어 있었어요 → 한 번만 비워요
+    if (saved && !saved.cartSeedCleared) {
+      const seedIds = CART_SEED.map((c) => c.id);
+      state = { ...state, cart: state.cart.filter((c) => !seedIds.includes(c.id)), cartSeedCleared: true };
+    }
     // 예전 버전은 온보딩 스타일 사진도 숫자로 기억했어요
     if (state.stylePicks.some((x) => typeof x !== "string")) state = { ...state, stylePicks: [], styleOrder: [] };
     // 목록에서 빠진 취향 사진은 저장한 선택에서도 빼요
