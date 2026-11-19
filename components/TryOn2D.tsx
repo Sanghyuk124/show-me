@@ -139,7 +139,10 @@ function prepare(item: ClosetItem, isTop: boolean) {
     p = (async () => {
       // 이미 누끼인 사진 → 그대로, 미리 만든 누끼가 있으면 그것, 아니면 지금 누끼를 따요
       const pre = PRECUT_IMAGES[item.image!];
-      const src = item.cutout
+      const demoImg = item.demo ? DEMO_GARMENTS[item.demo]?.image : undefined;
+      const src = demoImg
+        ? demoImg
+        : item.cutout
         ? item.image!
         : (pre ?? (await removeBackground(item.image!).catch(() => ({ image: item.image!, ok: false }))).image);
       const shape = await measureGarmentImage(src);
@@ -322,7 +325,8 @@ function drawRigTop(ctx: CanvasRenderingContext2D, rig: TopRig, spec: GarmentSpe
   // 소매는 팔 위에 오고(위팔 굵기 sleeveTop), 몸판은 소매 안쪽 아래까지 와요
   const armX = Math.max(Math.abs(L.arms.left.x0), Math.abs(L.arms.right.x0));
   const sleeveTop = 13 + (m.chest - 100) * 0.06; // 팔을 내렸을 때 앞에서 보이는 위팔 쪽 소매 폭 (cm)
-  const sleeveOut = Math.max((m.shoulder / 2) * 0.93, armX + sleeveTop / 2 + 0.5); // 소매 바깥선 (어깨 솔기 높이)
+  // 소매 바깥선 (어깨 솔기 높이). 드롭 숄더(어깨너비가 아주 넓은 옷)도 팔에서 너무 멀어지지 않게
+  const sleeveOut = Math.min(Math.max((m.shoulder / 2) * 0.93, armX + sleeveTop / 2 + 0.5), armX + sleeveTop / 2 + 4);
   const ap = Math.max(bust.xr + 2.5, armX - sleeveTop / 2 + 3, Math.min(halfFlat(rig.armpit[0], rig.armpit[1]) * 0.8, armX + 1));
   const hm = Math.min(Math.max(halfFlat(rig.hem[0], rig.hem[1]) * 0.8, hips.xr + 2), ap + 1.5);
   const sh = ap;
@@ -385,7 +389,7 @@ function drawRigTop(ctx: CanvasRenderingContext2D, rig: TopRig, spec: GarmentSpe
     const srcAxis = unit(sub(cTop, S));
     const srcLen = len(sub(cuffMid, seamMid));
     // 화면에서: 어깨 솔기 → 손목 (팔보다 살짝 바깥으로)
-    const pS = toPx(L, [sign * sleeveOut, dS[side][1] - Math.max(0, sleeveOut - sh) * 0.45]); // 어깨선이 바깥으로 살짝 내려가게
+    const pS = toPx(L, [sign * sleeveOut, dS[side][1] - Math.min(1.5 * s, Math.max(0, sleeveOut - sh) * 0.45)]); // 어깨선이 바깥으로 살짝 내려가게
     // 손목 쪽 소매 바깥선 = 손목 + 소맷부리 폭의 절반
     const cuffCm = (Math.abs(perpOf(sub(cBot, cTop), srcAxis)) / k) * 0.95;
     const wrist = toPx(L, [arm.x1 + sign * (cuffCm / 2 + 0.5), arm.y1]);
@@ -492,6 +496,44 @@ function drawRigPants(ctx: CanvasRenderingContext2D, rig: PantsRig, spec: Garmen
   legs.forEach((q, i) => warpQuad(ctx, img, q, P(dst[i]), [-0.04, 1.04], [0, 1.03], 4, 12));
 }
 
+/**
+ * 시연용 바지 (바닥에 펼쳐 찍은 사진): 허리 ~ 가랑이(엉덩이 칸)는 몸통에, 가랑이 ~ 밑단은 다리마다 아바타 다리에 맞춰요.
+ * 너비는 사진 속 비율 그대로(허리 단면 실측으로 cm 환산), 몸보다는 넓게. 길이는 총 기장·밑위 실측.
+ */
+function drawFlatPants(ctx: CanvasRenderingContext2D, rig: PantsRig, spec: GarmentSpec, L: BodyLayout, img: CanvasImageSource) {
+  const m = spec.measures;
+  const s = L.height / 165;
+  const hip = rig.hip!;
+  const waistY = Math.min(L.rings.waist.y + 4 * s, L.crotchY + m.rise);
+  const crY = waistY - m.rise; // 가랑이 높이 (밑위만큼 아래)
+  const hemY = Math.max(0.6, waistY - m.length);
+  const kx = (rig.top[1][0] - rig.top[0][0]) / (m.waist / 2); // 사진 px / cm (허리 단면)
+  const flat = (a: V, b: V) => Math.abs(b[0] - a[0]) / kx; // 펼친 너비 (cm)
+  // 입었을 때 앞에서 보이는 너비 ≈ 펼친 너비 × 0.95 (몸을 감싸는 만큼 살짝 좁아 보여요)
+  // 입었을 때 앞에서 보이는 너비: 몸을 감싸는 만큼 펼친 너비보다 좁아요 (허리 0.9 · 엉덩이 0.75 · 밑단 0.8)
+  const waistHalf = Math.max((flat(rig.top[0], rig.top[1]) / 2) * 0.9, L.rings.waist.xr + 0.6);
+  const hipHalf = Math.max((flat(hip[0], hip[1]) / 2) * 0.75, L.rings.hips.xr + 1.5);
+  const ank = L.rings.ankle;
+  const legC = (ank.xl + ank.xr) / 2;
+  const P = (q: [V, V, V, V]) => q.map((p) => toPx(L, p)) as [V, V, V, V];
+  const cr = rig.crotch;
+  // 엉덩이 칸 (허리 → 가랑이)
+  warpQuad(ctx, img, [rig.top[0], rig.top[1], hip[0], hip[1]], P([[-waistHalf, waistY], [waistHalf, waistY], [-hipHalf, crY], [hipHalf, crY]]), [0, 1], [0, 1.01], 8, 6);
+  // 다리
+  const hw = (a: V, b: V) => Math.max((flat(a, b) / 2) * 0.8, (ank.xr - ank.xl) / 2 + 2.5);
+  const hwL = hw(rig.hem[0], rig.hem[1]);
+  const hwR = hw(rig.hem[2], rig.hem[3]);
+  const legs: [V, V, V, V][] = [
+    [hip[0], cr, rig.hem[0], rig.hem[1]],
+    [cr, hip[1], rig.hem[2], rig.hem[3]],
+  ];
+  const dst: [V, V, V, V][] = [
+    [[-hipHalf, crY], [0, crY], [-legC - hwL, hemY], [-legC + hwL, hemY]],
+    [[0, crY], [hipHalf, crY], [legC - hwR, hemY], [legC + hwR, hemY]],
+  ];
+  legs.forEach((q, i) => warpQuad(ctx, img, q, P(dst[i]), [-0.03, 1.03], [-0.01, 1.03], 6, 14));
+}
+
 /** 겹치는 순서: 하의(0) → 상의(1) → 아우터(2) */
 const layer = (w: { item: ClosetItem; spec: GarmentSpec }) => (w.spec.kind === "bottom" ? 0 : w.item.category === "outer" ? 2 : 1);
 
@@ -532,7 +574,7 @@ export function TryOn2D({ layout, worn }: { layout: BodyLayout; worn: { item: Cl
       if (!p) continue;
       const demo = w.item.demo ? DEMO_GARMENTS[w.item.demo] : undefined;
       if (demo?.rig.kind === "top") drawRigTop(ctx, demo.rig, w.spec, layout, p.image);
-      else if (demo?.rig.kind === "pants") drawRigPants(ctx, demo.rig, w.spec, layout, p.image);
+      else if (demo?.rig.kind === "pants") (demo.rig.hip ? drawFlatPants : drawRigPants)(ctx, demo.rig, w.spec, layout, p.image);
       else if (w.spec.kind === "top") drawTop(ctx, w.spec, layout, p);
       else drawBottom(ctx, w.spec, layout, p);
     }
