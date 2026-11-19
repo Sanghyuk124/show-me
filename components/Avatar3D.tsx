@@ -1,34 +1,107 @@
 "use client";
 
-// 키·몸무게·상세 치수로 모양이 바뀌는 3D 마네킹 아바타입니다.
-// 치수 계산은 lib/bodyModel.ts, 몸 모양(관절이 자연스럽게 이어지는 표면)은 lib/bodyMesh.ts,
+// 키·몸무게·상세 치수로 모양이 바뀌는 3D 아바타입니다.
+// 인체 모델: MakeHuman(CC0) → scripts/avatar/build_avatar.py 로 만든 public/models/avatar-*.bin
+// 치수 계산: lib/bodyModel.ts(입력값 정리) + lib/avatarModel.ts(몸 모양 맞추기)
 // 이 파일은 그 모양을 화면에 그리고 돌려 보는 역할이에요.
 
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import type { BodyShape } from "@/lib/bodyModel";
-import { buildBodyMesh } from "@/lib/bodyMesh";
+import { loadAvatarModel, shapeAvatar, type AvatarModel } from "@/lib/avatarModel";
 import { cn } from "./ui";
 
 // 피부·속옷 색 (Figma 프로토타입의 아바타 이미지 참고)
 const PALETTE = {
-  female: { skin: "#d9cfc5", cloth: "#47464c" },
-  male: { skin: "#a8a29b", cloth: "#3f3e43" },
+  female: { skin: "#d8cdc2", cloth: "#46454b", eye: "#4a403a" },
+  male: { skin: "#a29b94", cloth: "#3e3d42", eye: "#3b3430" },
 };
 
-/** 치수로 만든 몸 모양(lib/bodyMesh.ts)을 3D 물체로 바꿔요. */
-function buildBody(shape: BodyShape, material: THREE.Material) {
-  const pal = PALETTE[shape.gender];
-  const toLinear = (hex: string) => new THREE.Color(hex).toArray() as [number, number, number];
-  const data = buildBodyMesh(shape, { skin: toLinear(pal.skin), cloth: toLinear(pal.cloth) });
-  const g = new THREE.BufferGeometry();
-  g.setAttribute("position", new THREE.BufferAttribute(data.positions, 3));
-  g.setAttribute("normal", new THREE.BufferAttribute(data.normals, 3));
-  g.setAttribute("color", new THREE.BufferAttribute(data.colors, 3));
-  g.setIndex(new THREE.BufferAttribute(data.indices, 1));
+/**
+ * 속옷을 칠하는 규칙 (GLSL). 화면의 픽셀마다 '기본 몸에서의 위치'를 보고 정해서 경계가 매끈해요.
+ * 브라(밑밴드·컵·어깨끈)와 하이컷 브리프(여성), 드로즈(남성). 기준 높이는 아바타 파일의 landmarks.
+ */
+const CLOTH_GLSL = /* glsl */ `
+uniform float uHipsY, uWaistY, uBustY, uUnderY, uCrotchY, uHipsHalf, uHipsZ, uShoulderY, uTorsoZ, uBreastX;
+uniform float uMale;
+uniform vec3 uSkin, uCloth;
+varying vec3 vRest;
+varying float vArm;
+float bandY(float y, float lo, float hi) {
+  float aa = 0.12;
+  return smoothstep(lo - aa, lo + aa, y) * (1.0 - smoothstep(hi - aa, hi + aa, y));
+}
+float clothMask(vec3 p) {
+  float ax = abs(p.x);
+  if (uMale > 0.5) {
+    // 드로즈: 허리 아래 ~ 허벅지 위쪽
+    return bandY(p.y, uCrotchY - 9.0, uHipsY + 0.62 * (uWaistY - uHipsY));
+  }
+  // 하이컷 브리프: 가운데는 가랑이까지, 옆으로 갈수록 다리 선을 따라 올라가요 (뒤는 엉덩이를 더 덮어요)
+  float u = ax / uHipsHalf;
+  float back = 1.0 - smoothstep(uHipsZ - 1.0, uHipsZ + 1.0, p.z);
+  float sideBottom = mix(uHipsY + 1.0, uHipsY - 4.0, back);
+  float bottom = uCrotchY - 1.0 + (sideBottom - (uCrotchY - 1.0)) * smoothstep(0.1, 0.85, u);
+  float brief = bandY(p.y, bottom, uHipsY + 0.45 * (uWaistY - uHipsY));
+  // 브라
+  float yU = uUnderY - 1.4;
+  float band = bandY(p.y, yU, yU + 2.4);
+  float ub = ax / uBreastX;
+  float bump = exp(-pow((ub - 1.0) / 0.62, 2.0));
+  float cupTop = mix(uBustY - 3.5, uBustY + 4.2, bump);
+  float front = smoothstep(uTorsoZ - 2.0, uTorsoZ, p.z);
+  float cup = front * bandY(p.y, yU, cupTop) * (1.0 - smoothstep(1.7, 1.8, ub));
+  float strap = (1.0 - smoothstep(0.5, 0.62, abs(ax - uBreastX * 1.02))) * bandY(p.y, yU, uShoulderY + 7.0);
+  strap *= 1.0 - front * (1.0 - smoothstep(cupTop - 0.8, cupTop - 0.4, p.y)); // 앞쪽은 컵 위로만
+  return max(max(brief, band), max(cup, strap));
+}
+`;
+
+/** 아바타 파일의 몸으로 3D 물체를 만들어요 (정점 위치는 나중에 치수에 맞춰 채워요). */
+function createBody(model: AvatarModel, gender: BodyShape["gender"]) {
+  const pal = PALETTE[gender];
+  const lm = model.landmarks;
+  const position = new THREE.BufferAttribute(new Float32Array(model.vertexCount * 3), 3);
+  const body = new THREE.BufferGeometry();
+  body.setAttribute("position", position);
+  body.setAttribute("rest", new THREE.BufferAttribute(model.base, 3)); // 속옷 위치를 정하는 기본 몸 좌표
+  body.setAttribute("armF", new THREE.BufferAttribute(model.armF, 1, true));
+  body.setIndex(new THREE.BufferAttribute(model.index, 1));
+  const eyes = new THREE.BufferGeometry();
+  eyes.setAttribute("position", position);
+  eyes.setIndex(new THREE.BufferAttribute(model.eyeIndex, 1));
+
+  const skinMat = new THREE.MeshStandardMaterial({ color: pal.skin, roughness: 0.78, metalness: 0 });
+  skinMat.onBeforeCompile = (shader) => {
+    const u = shader.uniforms;
+    u.uHipsY = { value: lm.hipsY };
+    u.uWaistY = { value: lm.waistY };
+    u.uBustY = { value: lm.bustY };
+    u.uUnderY = { value: lm.underbustY };
+    u.uCrotchY = { value: lm.crotchY };
+    u.uHipsHalf = { value: lm.hipsHalf };
+    u.uHipsZ = { value: lm.hipsZ };
+    u.uShoulderY = { value: lm.shoulderY };
+    u.uTorsoZ = { value: lm.torsoZ };
+    u.uBreastX = { value: lm.breastX };
+    u.uMale = { value: gender === "male" ? 1 : 0 };
+    u.uSkin = { value: new THREE.Color(pal.skin) };
+    u.uCloth = { value: new THREE.Color(pal.cloth) };
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nattribute vec3 rest;\nattribute float armF;\nvarying vec3 vRest;\nvarying float vArm;")
+      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvRest = rest;\nvArm = armF;");
+    shader.fragmentShader = shader.fragmentShader
+      .replace("#include <common>", "#include <common>\n" + CLOTH_GLSL)
+      .replace(
+        "#include <color_fragment>",
+        "#include <color_fragment>\nfloat clothAmt = clothMask(vRest) * (1.0 - smoothstep(0.35, 0.6, vArm));\ndiffuseColor.rgb = mix(uSkin, uCloth, clothAmt);",
+      );
+  };
+
   const group = new THREE.Group();
-  group.add(new THREE.Mesh(g, material));
-  return group;
+  group.add(new THREE.Mesh(body, skinMat));
+  group.add(new THREE.Mesh(eyes, new THREE.MeshStandardMaterial({ color: pal.eye, roughness: 0.35, metalness: 0 })));
+  return { group, body, eyes, position };
 }
 
 /** 발밑의 부드러운 그림자 */
@@ -92,10 +165,10 @@ export function Avatar3D({ shape, className, controls = true }: { shape: BodySha
     scene.add(rim);
     scene.add(groundShadow());
 
-    const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.72, metalness: 0 });
     const root = new THREE.Group();
     scene.add(root);
-    let body: THREE.Group | null = null;
+    let body: (ReturnType<typeof createBody> & { gender: BodyShape["gender"] }) | null = null;
+    let disposed = false;
     let frameH = 180;
     let rot = 0;
     let target = 0;
@@ -118,22 +191,44 @@ export function Avatar3D({ shape, className, controls = true }: { shape: BodySha
     };
 
     let pending = 0;
-    const rebuild = (s: BodyShape) => {
-      if (body) {
-        root.remove(body);
-        body.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
+    let latest = 0;
+    const disposeBody = () => {
+      if (!body) return;
+      root.remove(body.group);
+      body.body.dispose();
+      body.eyes.dispose();
+      body.group.traverse((o) => ((o as THREE.Mesh).material as THREE.Material | undefined)?.dispose());
+      body = null;
+    };
+    const rebuild = async (s: BodyShape) => {
+      const ticket = ++latest;
+      let model: AvatarModel;
+      try {
+        model = await loadAvatarModel(s.gender);
+      } catch {
+        if (!disposed) setFailed(true);
+        return;
       }
-      body = buildBody(s, material);
-      root.add(body);
+      if (disposed || ticket !== latest) return; // 더 최근 요청이 있으면 무시
+      if (!body || body.gender !== s.gender) {
+        disposeBody();
+        body = { ...createBody(model, s.gender), gender: s.gender };
+        root.add(body.group);
+      }
+      body.position.array.set(shapeAvatar(model, s));
+      body.position.needsUpdate = true;
+      body.body.computeVertexNormals();
+      body.eyes.computeVertexNormals();
+      body.body.computeBoundingSphere();
       frameH = Math.max(s.height, 175) + 8;
       fit();
     };
 
     api.current = {
       setBody: (s) => {
-        // 입력 중에는 잠깐 기다렸다가 한 번에 다시 만들어요 (몸 모양 계산이 무거워서)
+        // 입력 중에는 잠깐 기다렸다가 한 번에 다시 계산해요
         clearTimeout(pending);
-        pending = window.setTimeout(() => rebuild(s), body ? 120 : 0);
+        pending = window.setTimeout(() => rebuild(s), body ? 80 : 0);
       },
       setView: (r) => {
         // 가까운 방향으로 돌아가도록 현재 각도 기준으로 맞춰요
@@ -175,11 +270,11 @@ export function Avatar3D({ shape, className, controls = true }: { shape: BodySha
       cancelAnimationFrame(raf);
       clearTimeout(pending);
       ro.disconnect();
-      body?.traverse((o) => (o as THREE.Mesh).geometry?.dispose());
-      material.dispose();
+      disposed = true;
+      disposeBody();
       scene.traverse((o) => {
         const m = o as THREE.Mesh;
-        if (m.isMesh && m.material !== material) {
+        if (m.isMesh) {
           m.geometry.dispose();
           const mat = m.material as THREE.MeshBasicMaterial;
           mat.map?.dispose();
