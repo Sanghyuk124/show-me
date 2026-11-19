@@ -102,6 +102,13 @@ export const TASTE_PHOTOS = [
   { id: 9, tag: "아메카지" }, // 아메카지 남성 데님
 ].map((p) => ({ ...p, src: `/images/taste/taste-${p.id}.jpg` }));
 
+/**
+ * 처음부터 옷장에 들어 있는 옷 (예시 데이터). 의상 데이터를 추가할 때는 아래 형식대로 한 벌씩 넣으세요.
+ * - category: "top"(상의) · "outer"(아우터, 상의 탭에 보여요) · "bottom"(하의) · "bag"(가방·신발 등 ACC 탭)
+ * - image: public/images/closet/ 에 사진을 넣고 "/images/closet/파일이름.jpg"
+ * - favorite: true 면 즐겨찾기(각 탭 맨 위), measures: 실측(cm). 비워 두면 '실측 필요'로 보여요.
+ * 사용자가 앱에서 직접 등록하는 옷은 이 목록이 아니라 브라우저에 저장돼요.
+ */
 export const CLOSET_SEED: ClosetItem[] = [
   {
     id: "shirt",
