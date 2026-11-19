@@ -3,7 +3,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 
-const MODEL = "claude-opus-5-5";
+const MODEL = "claude-sonnet-5-5"; // 주최측 가이드 권장: 평소에는 Sonnet 5.5
 
 const SYSTEM = `당신은 패션 앱의 옷장 정리 도우미입니다. 사용자가 등록한 옷 하나를 보고 종류를 분류해요.
 - top: 셔츠, 블라우스, 티셔츠, 니트, 맨투맨, 후드, 원피스 등 상의

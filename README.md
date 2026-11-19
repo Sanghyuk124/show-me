@@ -25,7 +25,7 @@ npm run dev
 
 ## 쇼핑메이트 채팅 (Claude API)
 
-채팅은 서버 라우트 `app/api/chat/route.ts`가 Claude(`claude-opus-5-5`)에게 물어서 답합니다.
+채팅은 서버 라우트 `app/api/chat/route.ts`가 Claude(`claude-sonnet-5-5`)에게 물어서 답합니다.
 API 키가 없으면 `lib/chat.ts`의 미리 써둔 예시 답변으로 대신 답하니, 키 없이도 앱은 동작해요.
 
 키를 받으면:

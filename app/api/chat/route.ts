@@ -5,7 +5,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { ChatContext, ChatTurn } from "@/lib/chat";
 
-const MODEL = "claude-opus-5-5";
+const MODEL = "claude-sonnet-5-5"; // 주최측 가이드 권장: 평소에는 Sonnet 5.5
 const MAX_TURNS = 20; // 최근 대화만 보내요
 const MAX_CHARS = 2000; // 메시지 하나당 최대 글자 수
 
