@@ -325,6 +325,7 @@ export const BODY_SEED: Measures = {
   inseam: "75",
 };
 
+/** 장바구니에 담을 수 있는 예시 상품 정보 (채팅의 상품 상세 → '장바구니 담기'). 처음 장바구니는 비어 있어요. */
 export const CART_SEED: CartItem[] = [
   { id: "shirt", name: "아이보리 셔츠", option: "아이보리 / M", price: 39000, image: "/images/closet/shirt.jpg", qty: 1, checked: true },
   { id: "cardigan", name: "네이비 가디건", option: "네이비 / M", price: 49000, image: "/images/closet/cardigan.jpg", qty: 1, checked: true },
