@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ClosetThumb } from "@/components/ClosetThumb";
 import { itemStatus, MeasureModal } from "@/components/MeasureModal";
+import { PhotoLibrary, type SamplePhoto } from "@/components/PhotoLibrary";
 import { RegisterItemModal, type NewItemSource } from "@/components/RegisterItemModal";
 import { cn, Modal, TabHeader } from "@/components/ui";
 import type { ClosetItem } from "@/lib/data";
@@ -79,6 +80,12 @@ function FavoritePicker({
   );
 }
 
+/** 받침이 있으면 '을', 없으면 '를' (예: 가디건을 · 니트를) */
+function objectJosa(word: string) {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  return code >= 0 && code < 11172 && code % 28 !== 0 ? "을" : "를";
+}
+
 export default function ClosetPage() {
   const app = useApp();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -89,6 +96,9 @@ export default function ClosetPage() {
   const [choosing, setChoosing] = useState<"top" | "bottom" | null>(null);
   const [photo, setPhoto] = useState<{ original: string; cutout: string; ok: boolean } | null>(null);
   const [cutting, setCutting] = useState(false);
+  // 앱 안 '사진 보관함' (예시 사진) 창, 누끼 따는 중인 예시 사진
+  const [library, setLibrary] = useState(false);
+  const [sampleBusy, setSampleBusy] = useState<string | null>(null);
   // 판매처 링크 화면에서 저장하고 돌아오면 이름·종류를 묻는 창이 열립니다.
   const source: NewItemSource | null = photo
     ? { image: photo.cutout, aiImage: photo.original, cutout: photo.ok }
@@ -120,7 +130,29 @@ export default function ClosetPage() {
 
   const openItem = app.closet.find((i) => i.id === openId);
 
-  // 사진을 고르면: 작게 줄이고 → 배경을 지워(누끼) → 이름·종류를 확인하고 옷장에 넣어요
+  // 예시 사진을 누르면: 누끼를 따서 정해진 이름·종류로 옷장에 바로 넣어요
+  const onSample = async (p: SamplePhoto) => {
+    setSampleBusy(p.id);
+    const cut = await removeBackground(p.src).catch(() => ({ image: p.src, ok: false }));
+    const item: ClosetItem = {
+      id: `item-${Date.now()}`,
+      name: p.name,
+      category: p.category,
+      source: "photo",
+      image: cut.image,
+      cutout: cut.ok,
+      sample: p.id,
+      favorite: false,
+      confirmed: false,
+      measures: {},
+    };
+    setApp((s) => ({ closet: [item, ...s.closet] }));
+    setSampleBusy(null);
+    setLibrary(false);
+    showToast(`‘${p.name}’${objectJosa(p.name)} 옷장에 넣었어요.`);
+  };
+
+  // 휴대폰 사진을 고르면: 작게 줄이고 → 배경을 지워(누끼) → 이름·종류를 확인하고 옷장에 넣어요
   const onPhoto = async (file?: File) => {
     if (!file) return;
     setCutting(true);
@@ -145,7 +177,7 @@ export default function ClosetPage() {
           <div className="flex gap-[2.84px]">
             <button
               type="button"
-              onClick={() => fileRef.current?.click()}
+              onClick={() => setLibrary(true)}
               disabled={cutting}
               className="flex-1 rounded-[4.62px] bg-white px-[6.9px] py-[5px] text-center text-[10px] leading-[1.4] font-medium whitespace-pre text-plum"
             >
@@ -281,6 +313,18 @@ export default function ClosetPage() {
         />
       )}
       {openItem && <MeasureModal key={openItem.id} item={openItem} onClose={() => setOpenId(null)} />}
+      {library && (
+        <PhotoLibrary
+          gender={app.profile.gender}
+          busyId={sampleBusy}
+          onPick={onSample}
+          onDevice={() => {
+            setLibrary(false);
+            fileRef.current?.click();
+          }}
+          onClose={() => !sampleBusy && setLibrary(false)}
+        />
+      )}
       {source && (
         <RegisterItemModal
           source={source}
