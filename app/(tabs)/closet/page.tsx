@@ -146,7 +146,7 @@ export default function ClosetPage() {
     setSampleBusy(p.id);
     // 시연용 옷이면 미리 따 둔 누끼와 실측을 그대로 써요 (lib/demoGarments.ts)
     const demo = p.demo ? DEMO_GARMENTS[p.demo] : undefined;
-    const cut = demo ? { image: demo.image, ok: true } : await removeBackground(p.src).catch(() => ({ image: p.src, ok: false }));
+    const cut = demo ? { image: demo.photo, ok: true } : await removeBackground(p.src).catch(() => ({ image: p.src, ok: false }));
     const item: ClosetItem = {
       id: `item-${Date.now()}`,
       name: p.name,

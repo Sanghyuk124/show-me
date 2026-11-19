@@ -108,7 +108,7 @@ export const SAMPLE_PHOTOS: Record<Gender, { id: string; name: string; category:
   ],
   male: [
     { id: "men-knit", name: "네이비 UCLA 니트", category: "top", src: "/demo-photos/men-knit.jpg", demo: "m-knit" },
-    { id: "men-denim", name: "블랙 벌룬 데님", category: "bottom", src: "/demo-photos/men-denim.jpg" },
+    { id: "men-denim", name: "블랙 벌룬 데님", category: "bottom", src: "/demo-photos/men-denim.jpg", demo: "m-bdenim" },
   ],
 };
 
@@ -305,14 +305,14 @@ export const CLOSET_SEED: ClosetItem[] = [
     measures: {},
   },
   // ── 남성 시연 세트 (lib/demoGarments.ts) ──
-  ...(["m-tee", "m-pants", "m-jacket"] as const).map((id) => {
+  ...(["m-hoodie", "m-tee", "m-pants"] as const).map((id) => {
     const g = DEMO_GARMENTS[id];
     return {
       id: `demo-${id}`,
       name: g.name,
       category: g.category,
       source: "photo" as const,
-      image: g.image,
+      image: g.photo,
       cutout: true,
       demo: id,
       gender: g.gender,

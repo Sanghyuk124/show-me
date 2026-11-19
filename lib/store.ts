@@ -102,6 +102,14 @@ function load() {
     if (state.tastePicks.some((x) => typeof x !== "string")) state = { ...state, tastePicks: [], tasteOrder: [], tasteRound: 0 };
     // 새로 추가된 시연용 옷(예: 남성 세트)이 저장된 옷장에 없으면 넣어 줘요
     if (saved) {
+      // 예전 시연 옷(목록에서 빠진 것)은 지우고, 시연 옷 정보(사진·실측)는 최신으로 맞춰요
+      const seedIds = new Set(CLOSET_SEED.map((c) => c.id));
+      state = {
+        ...state,
+        closet: state.closet
+          .filter((i) => !i.id.startsWith("demo-") || seedIds.has(i.id))
+          .map((i) => (i.id.startsWith("demo-") ? { ...i, ...CLOSET_SEED.find((c) => c.id === i.id)!, favorite: i.favorite } : i)),
+      };
       const missing = CLOSET_SEED.filter((c) => c.demo && !state.closet.some((i) => i.id === c.id));
       if (missing.length) state = { ...state, closet: [...state.closet, ...missing] };
       // 예전 기본 옷에는 성별 표시가 없었어요 → 예시 옷 정보로 맞춰요
