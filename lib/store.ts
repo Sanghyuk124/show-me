@@ -38,6 +38,8 @@ export interface AppState {
   closet: ClosetItem[];
   body: Measures;
   tryOnLink: string;
+  /** 아바타에 입혀 보는 옷 (옷장 옷 id) */
+  wearing: { top?: string; bottom?: string };
   pendingLink: { url: string; size: string } | null;
   followed: string[];
   saleAlert: boolean;
@@ -60,6 +62,7 @@ const initialState: AppState = {
   closet: CLOSET_SEED,
   body: BODY_SEED,
   tryOnLink: "",
+  wearing: {},
   pendingLink: null,
   followed: ["a", "b"],
   saleAlert: true,
