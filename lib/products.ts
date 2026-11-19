@@ -27,9 +27,55 @@ export interface Product {
   desc?: string;
   /** 특정 성별용이면 지정 (비우면 공용) */
   gender?: Gender;
+  /** 이 상황을 물으면 꼭 이 상품을 추천해요 (시연용 고정 추천, 예: "남성 데이트 룩") */
+  pinnedFor?: string[];
 }
 
+/** 남성 사용자가 데이트 룩을 물으면 함께 추천할 고정 세트 (시연용) */
+export const DATE_LOOK_MALE = ["dunst-striped-chunky-sweater", "dunst-wide-chino-slacks"];
+
 export const PRODUCTS: Product[] = [
+  // ── 남성 데이트 룩 고정 추천 (던스트, 실측은 상품 페이지 사이즈 가이드의 단면 × 2) ──
+  {
+    id: "dunst-striped-chunky-sweater",
+    name: "UNISEX STRIPED CHUNKY SWEATER IVORY",
+    brand: "던스트",
+    category: "top",
+    price: 141600,
+    image: "/images/products/dunst-striped-chunky-sweater.jpg",
+    link: "https://dunststudio.com/product/detail.html?product_no=9792&cate_no=303&display_group=1",
+    colors: ["아이보리 (카키 스트라이프)"],
+    // 상품 페이지 사이즈 가이드 (단면): XS 총장55 어깨48 가슴53 밑단41 암홀22.5 팔길이54 … XL 총장67 어깨59 가슴64 밑단51 암홀26.5 팔길이60
+    sizes: {
+      XS: { length: "55", shoulder: "48", chest: "106", hem: "82", armhole: "22.5", sleeve: "54" },
+      S: { length: "57", shoulder: "50", chest: "110", hem: "86", armhole: "23.5", sleeve: "55" },
+      M: { length: "63", shoulder: "53", chest: "116", hem: "92", armhole: "24.5", sleeve: "56" },
+      L: { length: "65", shoulder: "56", chest: "122", hem: "98", armhole: "25.5", sleeve: "58.5" },
+      XL: { length: "67", shoulder: "59", chest: "128", hem: "102", armhole: "26.5", sleeve: "60" },
+    },
+    tags: ["캐주얼", "미니멀", "데이트"],
+    desc: "세미 오버핏 유니섹스 크루넥 스웨터, 울 85% · 아크릴 15%, 옆선 버튼 디테일. 정가 149,000원 (할인가)",
+    pinnedFor: ["남성 데이트 룩"],
+  },
+  {
+    id: "dunst-wide-chino-slacks",
+    name: "DOUBLE PLEATED WIDE CHINO SLACKS KHAKI",
+    brand: "던스트",
+    category: "bottom",
+    price: 103200,
+    image: "/images/products/dunst-wide-chino-slacks.jpg",
+    link: "https://dunststudio.com/product/detail.html?product_no=9131&cate_no=303&display_group=1",
+    colors: ["카키"],
+    // 상품 페이지 사이즈 가이드 (단면): S 총장106 허리39 힙51.7 허벅지36 밑단26.5 밑위30.5 … L 총장110 허리43 힙55.7 허벅지40 밑단28.5 밑위32.5
+    sizes: {
+      S: { length: "106", waist: "78", hip: "103.4", thigh: "72", hem: "53", rise: "30.5" },
+      M: { length: "108", waist: "82", hip: "107.4", thigh: "76", hem: "55", rise: "31.5" },
+      L: { length: "110", waist: "86", hip: "111.4", thigh: "80", hem: "57", rise: "32.5" },
+    },
+    tags: ["미니멀", "캐주얼", "데이트"],
+    desc: "더블 플리츠 와이드 치노 슬랙스, 코튼 100%, 여유롭게 떨어지는 와이드 실루엣. 정가 129,000원 (할인가)",
+    pinnedFor: ["남성 데이트 룩"],
+  },
   {
     id: "sample-oxford-shirt",
     name: "예시 · 옥스퍼드 레귤러 셔츠",
