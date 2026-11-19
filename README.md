@@ -47,8 +47,16 @@ API 키가 없으면 `lib/chat.ts`의 미리 써둔 예시 답변으로 대신 �
 
 ## 3D 아바타
 
-아바타 탭의 3D 마네킹은 키·몸무게·성별과 상세 치수(팔 길이·어깨 너비·가슴·허리·엉덩이 둘레·인심)로 모양이 바뀝니다.
-치수 계산은 `lib/bodyModel.ts`, 3D로 그리는 코드는 `components/Avatar3D.tsx`에 있어요.
+아바타 탭의 3D 인체 모델은 [MakeHuman](https://github.com/makehumancommunity/makehuman)의 인체 데이터(CC0 1.0, 상업적 이용 가능)로 만들었습니다.
+키·몸무게·성별과 상세 치수(팔 길이·어깨 너비·가슴·허리·엉덩이 둘레·인심)를 넣으면, MakeHuman 줄자 위치에서 잰 값이 입력값과 같아지도록 몸 모양이 바뀝니다.
+
+| 파일 | 하는 일 |
+| --- | --- |
+| `public/models/avatar-female.bin`, `avatar-male.bin` | 인체 모델 파일 (팔·다리를 모은 자세, 변형 데이터 포함) |
+| `scripts/avatar/build_avatar.py` | MakeHuman 데이터로 위 파일을 다시 만드는 스크립트 (파일 위 설명 참고) |
+| `lib/bodyModel.ts` | 입력값 정리, 입력 안 한 치수는 키·몸무게로 추정 |
+| `lib/avatarModel.ts` | 모델 파일 읽기, 치수에 맞춰 몸 모양 계산 |
+| `components/Avatar3D.tsx` | 화면에 그리기, 회전, 속옷 칠하기 |
 
 ## 화면 주소
 
