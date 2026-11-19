@@ -5,7 +5,7 @@
 import { myCloset, type AppState } from "./store";
 import { guessCategory } from "./classify";
 import { CONCERNS, PERSONAL_COLORS, tastePhoto, type ClosetItem, type Measures, type Profile } from "./data";
-import { DATE_LOOK_MALE, PRODUCTS } from "./products";
+import { DATE_LOOK_MALE, FIRST_WORK_FEMALE, isFirstWork, PRODUCTS } from "./products";
 
 export interface Reply {
   text: string;
@@ -115,11 +115,22 @@ async function cannedReply(message: string, app: AppState): Promise<Reply> {
     };
   }
 
+  // 여성 첫 출근 룩도 시연용 고정 세트로 답해요 (lib/products.ts FIRST_WORK_FEMALE)
+  if (app.profile.gender === "female" && isFirstWork(text)) {
+    return {
+      text: "첫 출근 룩으로는 던스트 클래식 브이넥 스웨터, 세미 부츠컷 슬림 슬랙스, 시야쥬 울 블렌드 부클 롱코트를 추천해요.\n그레이 브이넥 니트에 블랙 부츠컷 슬랙스를 입고 다크 네이비 롱코트를 걸치면 단정하면서도 신뢰감 있는 첫인상을 줄 수 있어요. 니트 안에 셔츠를 레이어드해도 좋아요.\n기준 옷 실측을 입력해 두면 맞는 사이즈도 함께 알려드릴게요.",
+      products: FIRST_WORK_FEMALE,
+      chips: ["사이즈가 고민돼요", "신발은 뭐가 좋을까요?"],
+    };
+  }
+
   // 상품 추천을 물으면 상품 목록에서 종류가 맞는 것을 골라 보여줘요.
   if (/추천|상품|브랜드|살까|사고 싶|구매|쇼핑/.test(text) && PRODUCTS.length) {
     const category = guessCategory(text);
-    const matched = PRODUCTS.filter((p) => !category || p.category === category || (category === "top" && p.category === "outer"));
-    const picks = (matched.length ? matched : PRODUCTS).slice(0, 2);
+    // 시연용 고정 세트(pinnedFor)는 그 상황에서만 보여줘요
+    const pool = PRODUCTS.filter((p) => !p.pinnedFor);
+    const matched = pool.filter((p) => !category || p.category === category || (category === "top" && p.category === "outer"));
+    const picks = (matched.length ? matched : pool).slice(0, 2);
     return {
       text: "상품 목록에서 지금 옷장과 잘 어울릴 만한 것을 골라봤어요.\n즐겨찾는 기준 옷의 실측을 입력해 두면 맞는 사이즈도 함께 알려드릴게요.",
       products: picks.map((p) => p.id),
