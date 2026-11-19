@@ -8,7 +8,8 @@ import { ClosetThumb } from "@/components/ClosetThumb";
 import { itemStatus, MeasureModal } from "@/components/MeasureModal";
 import { cn, TabHeader } from "@/components/ui";
 import { resolveBody } from "@/lib/bodyModel";
-import type { GarmentReport } from "@/components/Avatar3D";
+import type { BodyLayout, GarmentReport } from "@/components/Avatar3D";
+import { TryOn2D } from "@/components/TryOn2D";
 import { FIT_COLOR, FIT_LABEL, garmentColor, missingFor, toGarment, type GarmentSpec } from "@/lib/garment";
 import type { ClosetItem } from "@/lib/data";
 import { setApp, showToast, useApp } from "@/lib/store";
@@ -29,6 +30,9 @@ export default function AvatarPage() {
 
   // ── 옷 입혀 보기 ──
   const [fitView, setFitView] = useState(false);
+  // 기본은 2D 입어보기 (실제 옷 사진을 정면 아바타에 겹쳐요), 3D로 돌려 볼 수도 있어요
+  const [mode, setMode] = useState<"2d" | "3d">("2d");
+  const [layout, setLayout] = useState<BodyLayout | null>(null);
   const [reports, setReports] = useState<GarmentReport[]>([]);
   const [colors, setColors] = useState<Record<string, string>>({});
   const worn = [app.wearing?.top, app.wearing?.bottom]
@@ -73,10 +77,49 @@ export default function AvatarPage() {
             <span className="flex-1 text-left font-bold text-plum">{shape.measured.length ? `내 체형 · 실측 ${shape.measured.length}개 반영` : "기본 체형 · 예시"}</span>
             <span className="flex-1 text-right whitespace-pre text-sub">{`${app.profile.height} cm  /  ${app.profile.weight} kg`}</span>
           </span>
-          {/* 3D 아바타: 드래그해서 돌려 보고, 정면·측면·후면 버튼으로 각도를 바꿔요 */}
-          <Avatar3D shape={shape} garments={garments} fitView={fitView} onReport={setReports} className="h-[250px] w-full" />
+          <div role="group" aria-label="보기 방식" className="flex w-full gap-1">
+            {(
+              [
+                ["2d", "2D 입어보기"],
+                ["3d", "3D로 보기"],
+              ] as const
+            ).map(([m, label]) => (
+              <button
+                key={m}
+                type="button"
+                aria-pressed={mode === m}
+                onClick={() => setMode(m)}
+                className={cn(
+                  "flex-1 rounded-full border-[0.75px] py-1 text-[10px] leading-[1.4]",
+                  mode === m ? "border-plum bg-plum font-medium text-white" : "border-line bg-white text-sub",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {/* 2D: 정면 아바타 위에 실제 옷 사진(누끼)을 실측대로 겹쳐요 · 3D: 드래그해서 돌려 보고, 정면·측면·후면 버튼으로 각도를 바꿔요 */}
+          <Avatar3D
+            shape={shape}
+            garments={garments}
+            fitView={fitView && mode === "3d"}
+            onReport={setReports}
+            flat={mode === "2d"}
+            onLayout={setLayout}
+            className="h-[250px] w-full"
+          >
+            {mode === "2d" && layout && (
+              <TryOn2D layout={layout} worn={worn.flatMap((item) => garments.filter((g) => g.id === item.id).map((spec) => ({ item, spec })))} />
+            )}
+          </Avatar3D>
           <p className="text-[10px] leading-[1.4] text-sub">
-            {garments.length ? "좌우로 끌어서 돌려 보고, 핏 보기로 끼는 곳을 확인해요" : "좌우로 끌어서 돌려 볼 수 있어요 · 아래 옷장에서 입어 볼 옷을 골라요"}
+            {mode === "2d"
+              ? garments.length
+                ? "실제 옷 사진을 내 체형과 실측에 맞춰 입혀 봤어요"
+                : "아래 옷장에서 입어 볼 옷을 골라요"
+              : garments.length
+                ? "좌우로 끌어서 돌려 보고, 핏 보기로 끼는 곳을 확인해요"
+                : "좌우로 끌어서 돌려 볼 수 있어요 · 아래 옷장에서 입어 볼 옷을 골라요"}
           </p>
           <button
             type="button"
@@ -94,14 +137,23 @@ export default function AvatarPage() {
               <button
                 type="button"
                 role="switch"
-                aria-checked={fitView}
-                onClick={() => setFitView((v) => !v)}
-                className={cn("rounded-full border-[0.75px] px-2.5 py-1 text-[10px]", fitView ? "border-plum bg-plum font-medium text-white" : "border-line bg-white text-sub")}
+                aria-checked={fitView && mode === "3d"}
+                onClick={() => {
+                  // 핏 색은 3D에서 보여 줘요
+                  if (mode === "2d") {
+                    setMode("3d");
+                    setFitView(true);
+                  } else setFitView((v) => !v);
+                }}
+                className={cn(
+                  "rounded-full border-[0.75px] px-2.5 py-1 text-[10px]",
+                  fitView && mode === "3d" ? "border-plum bg-plum font-medium text-white" : "border-line bg-white text-sub",
+                )}
               >
-                핏 보기 {fitView ? "켜짐" : "꺼짐"}
+                핏 보기 {fitView && mode === "3d" ? "켜짐" : "꺼짐"}
               </button>
             </div>
-            {fitView && (
+            {fitView && mode === "3d" && (
               <div className="flex flex-wrap gap-x-2.5 gap-y-1 text-[10px] text-sub">
                 {(Object.keys(FIT_LABEL) as (keyof typeof FIT_LABEL)[]).map((k) => (
                   <span key={k} className="flex items-center gap-1">

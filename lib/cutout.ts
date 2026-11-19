@@ -183,3 +183,101 @@ function blur(src: Uint8ClampedArray, w: number, h: number, r: number) {
       }
   return out;
 }
+
+/** 옷 사진(누끼)에서 옷이 차지하는 범위: 2D 입어보기에서 몸에 맞출 기준점 (사진 px) */
+export interface GarmentShape {
+  width: number;
+  height: number;
+  /** 옷이 있는 맨 위·맨 아래 줄 */
+  top: number;
+  bottom: number;
+  /** 줄마다 옷의 왼쪽·오른쪽 끝 (옷이 없으면 -1) */
+  left: Int16Array;
+  right: Int16Array;
+  /** 줄마다 몸판(가운데 조각)의 왼쪽·오른쪽 끝: 소매·몸판·소매 세 조각으로 나뉜 줄만 (아니면 -1) */
+  bodyL: Int16Array;
+  bodyR: Int16Array;
+}
+
+/** 누끼 사진을 읽어 줄마다 옷의 좌우 끝을 재요 (투명하지 않은 칸 = 옷) */
+export async function measureGarmentImage(src: string): Promise<GarmentShape> {
+  const img = await loadImage(src);
+  const scale = Math.min(1, 360 / Math.max(img.width, img.height));
+  const w = Math.max(1, Math.round(img.width * scale));
+  const h = Math.max(1, Math.round(img.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  const left = new Int16Array(h).fill(-1);
+  const right = new Int16Array(h).fill(-1);
+  const bodyL = new Int16Array(h).fill(-1);
+  const bodyR = new Int16Array(h).fill(-1);
+  const whole = () => ({ width: w, height: h, top: 0, bottom: h - 1, left: left.fill(0), right: right.fill(w - 1), bodyL, bodyR });
+  if (!ctx) return whole();
+  ctx.drawImage(img, 0, 0, w, h);
+  const a = ctx.getImageData(0, 0, w, h).data;
+  let top = -1;
+  let bottom = -1;
+  const minGap = Math.max(2, Math.round(w * 0.012)); // 이보다 좁은 틈은 조각을 나누지 않아요
+  for (let y = 0; y < h; y++) {
+    // 이 줄에서 옷이 있는 조각들 [시작, 끝] (좁은 틈은 이어 붙여요)
+    const runs: [number, number][] = [];
+    for (let x = 0; x < w; x++) {
+      if (a[(y * w + x) * 4 + 3] <= 60) continue;
+      if (left[y] < 0) left[y] = x;
+      right[y] = x;
+      const last = runs[runs.length - 1];
+      if (last && x - last[1] <= minGap) last[1] = x;
+      else runs.push([x, x]);
+    }
+    // 소매·몸판·소매: 가장 넓은 조각을 몸판으로 (양옆에 조각이 있을 때만)
+    if (runs.length >= 3) {
+      let best = 1;
+      for (let k = 1; k < runs.length - 1; k++) if (runs[k][1] - runs[k][0] > runs[best][1] - runs[best][0]) best = k;
+      bodyL[y] = runs[best][0];
+      bodyR[y] = runs[best][1];
+    }
+    if (left[y] >= 0) {
+      if (top < 0) top = y;
+      bottom = y;
+    }
+  }
+  if (top < 0) return whole();
+  // 위·아래 끝은 너비가 어느 정도 되는 줄부터 (테두리에 남은 작은 점은 무시)
+  let maxW = 0;
+  for (let y = top; y <= bottom; y++) if (left[y] >= 0) maxW = Math.max(maxW, right[y] - left[y]);
+  const solid = (y: number) => left[y] >= 0 && right[y] - left[y] >= maxW * 0.08;
+  while (top < bottom && !solid(top)) top++;
+  while (bottom > top && !solid(bottom)) bottom--;
+  return { width: w, height: h, top, bottom, left, right, bodyL, bodyR };
+}
+
+/** 몸판 너비(사진 px)와 가운데: 소매와 나뉜 줄들의 가운데 값. 그런 줄이 없으면 null */
+export function bodyPanel(g: GarmentShape) {
+  const ws: number[] = [];
+  const cs: number[] = [];
+  const h = g.bottom - g.top;
+  for (let y = Math.round(g.top + h * 0.35); y <= g.top + h * 0.9; y++) {
+    if (g.bodyL[y] < 0) continue;
+    // 옷 안쪽 솔기·틈으로 생긴 좁은 조각은 몸판이 아니에요
+    if (g.bodyR[y] - g.bodyL[y] < (g.right[y] - g.left[y]) * 0.35) continue;
+    ws.push(g.bodyR[y] - g.bodyL[y]);
+    cs.push((g.bodyR[y] + g.bodyL[y]) / 2);
+  }
+  if (ws.length < h * 0.05) return null;
+  const mid = (v: number[]) => [...v].sort((p, q) => p - q)[v.length >> 1];
+  return { width: mid(ws), center: mid(cs) };
+}
+
+/** y줄 근처(위아래 몇 줄)에서 옷의 좌우 끝 */
+export function spanAt(g: GarmentShape, y: number, band = 2) {
+  let l = Infinity;
+  let r = -Infinity;
+  for (let k = Math.max(g.top, Math.round(y) - band); k <= Math.min(g.bottom, Math.round(y) + band); k++) {
+    if (g.left[k] < 0) continue;
+    l = Math.min(l, g.left[k]);
+    r = Math.max(r, g.right[k]);
+  }
+  return Number.isFinite(l) ? { l, r } : { l: 0, r: g.width - 1 };
+}

@@ -232,6 +232,17 @@ export const CLOSET_SEED: ClosetItem[] = [
   },
 ];
 
+/**
+ * 예시 옷 사진의 배경을 미리 지운(누끼) 사진. 2D 입어보기에서 써요.
+ * (아이보리 셔츠처럼 배경과 색이 비슷한 옷은 앱에서 바로 누끼를 따기 어려워 미리 만들어 뒀어요)
+ */
+export const PRECUT_IMAGES: Record<string, string> = {
+  "/images/closet/shirt.jpg": "/images/closet/shirt-cut.png",
+  "/images/closet/cardigan.jpg": "/images/closet/cardigan-cut.png",
+  "/images/closet/slacks.jpg": "/images/closet/slacks-cut.png",
+  "/images/closet/tote.jpg": "/images/closet/tote-cut.png",
+};
+
 export const BODY_FIELDS = [
   { key: "arm", label: "팔 길이" },
   { key: "shoulder", label: "어깨 너비" },
