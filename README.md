@@ -43,7 +43,12 @@ API 키가 없으면 `lib/chat.ts`의 미리 써둔 예시 답변으로 대신 �
 ## 이미지·아이콘
 
 `public/images/`와 `public/icons/`의 파일은 Figma(Show Me - 수정본)에서 내려받은 원본입니다.
-남성 온보딩 사진은 `style-male-*.jpg`, 남성 아바타는 `avatar/body-male.jpg`이고, 기본 정보에서 성별을 바꾸면 자동으로 바뀝니다.
+남성 온보딩 사진은 `style-male-*.jpg`이고, 기본 정보에서 성별을 바꾸면 자동으로 바뀝니다.
+
+## 3D 아바타
+
+아바타 탭의 3D 마네킹은 키·몸무게·성별과 상세 치수(팔 길이·어깨 너비·가슴·허리·엉덩이 둘레·인심)로 모양이 바뀝니다.
+치수 계산은 `lib/bodyModel.ts`, 3D로 그리는 코드는 `components/Avatar3D.tsx`에 있어요.
 
 ## 화면 주소
 

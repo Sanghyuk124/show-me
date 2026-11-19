@@ -1,20 +1,28 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { BodyModal } from "@/components/BodyModal";
 import { ClosetThumb } from "@/components/ClosetThumb";
 import { itemStatus, MeasureModal } from "@/components/MeasureModal";
 import { cn, TabHeader } from "@/components/ui";
+import { resolveBody } from "@/lib/bodyModel";
 import { useApp } from "@/lib/store";
+
+// 3D 그래픽은 브라우저에서만 그릴 수 있어서, 화면이 열린 뒤에 불러와요.
+const Avatar3D = dynamic(() => import("@/components/Avatar3D").then((m) => m.Avatar3D), {
+  ssr: false,
+  loading: () => <div className="h-[250px] w-full animate-pulse rounded-[6.9px] bg-white/40" />,
+});
 
 export default function AvatarPage() {
   const app = useApp();
   const [bodyOpen, setBodyOpen] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const openItem = app.closet.find((i) => i.id === openId);
-  // Figma 남성 화면(07 · 남성)은 남성형 바디 이미지와 안내 문구가 달라요.
-  const male = app.profile.gender === "male";
+  // 키·몸무게·성별과 상세 치수로 3D 아바타 모양을 정해요 (lib/bodyModel.ts)
+  const shape = resolveBody(app.profile, app.body);
 
   return (
     <>
@@ -23,20 +31,22 @@ export default function AvatarPage() {
         <h2 className="text-[21px] leading-[1.35] font-bold">나를 닮은 핏의 기준</h2>
         <p className="text-[10px] leading-[1.4] text-sub">상단에서 체형을 확인하고, 아래에서 내 옷을 살펴봐요.</p>
 
-        <button
-          type="button"
-          onClick={() => setBodyOpen(true)}
-          className="flex w-full flex-col items-center gap-[4.7px] rounded-[11px] bg-[#f0ece7] px-[9.7px] py-[8.7px]"
-        >
+        <div className="flex w-full flex-col items-center gap-[4.7px] rounded-[11px] bg-[#f0ece7] px-[9.7px] py-[8.7px]">
           <span className="flex w-full text-[10px] leading-[1.4]">
-            <span className="flex-1 text-left font-bold text-plum">기본 체형 · 예시</span>
+            <span className="flex-1 text-left font-bold text-plum">{shape.measured.length ? `내 체형 · 실측 ${shape.measured.length}개 반영` : "기본 체형 · 예시"}</span>
             <span className="flex-1 text-right whitespace-pre text-sub">{`${app.profile.height} cm  /  ${app.profile.weight} kg`}</span>
           </span>
-          <img src={male ? "/images/avatar/body-male.jpg" : "/images/avatar/body.jpg"} alt={`기본 체형 아바타 · ${male ? "남성" : "여성"}`} className="h-[162.8px] w-[212.3px] rounded-[6.9px] object-contain" />
-          <span className="block w-full rounded-[5.5px] bg-white px-[6.9px] py-[6.2px] text-center text-[10px] leading-[1.4] font-medium text-plum">
-            {male ? "아바타를 눌러 상세 치수 수정" : "상세 치수 수정"}
-          </span>
-        </button>
+          {/* 3D 아바타: 드래그해서 돌려 보고, 정면·측면·후면 버튼으로 각도를 바꿔요 */}
+          <Avatar3D shape={shape} className="h-[250px] w-full" />
+          <p className="text-[10px] leading-[1.4] text-sub">좌우로 끌어서 돌려 볼 수 있어요</p>
+          <button
+            type="button"
+            onClick={() => setBodyOpen(true)}
+            className="block w-full rounded-[5.5px] bg-white px-[6.9px] py-[6.2px] text-center text-[10px] leading-[1.4] font-medium text-plum"
+          >
+            상세 치수 수정
+          </button>
+        </div>
 
         <div className="flex flex-col gap-[9.4px]">
           <div className="flex items-start leading-[1.4]">
