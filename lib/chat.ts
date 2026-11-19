@@ -4,7 +4,7 @@
 
 import { myCloset, type AppState } from "./store";
 import { guessCategory } from "./classify";
-import { CONCERNS, PERSONAL_COLORS, tastePhoto, type ClosetItem, type Measures, type Profile } from "./data";
+import { closetPicksFor, CONCERNS, PERSONAL_COLORS, tastePhoto, type ClosetItem, type Measures, type Profile } from "./data";
 import { DATE_LOOK_MALE, FIRST_WORK_FEMALE, isFirstWork, PRODUCTS } from "./products";
 
 export interface Reply {
@@ -12,6 +12,8 @@ export interface Reply {
   chips?: string[];
   /** 함께 보여줄 추천 상품 id (lib/products.ts) */
   products?: string[];
+  /** 옷장에서 골라 준 옷 (사진 보관함 예시 사진 id) */
+  closet?: string[];
 }
 
 /** 서버로 보내는 대화 한 줄 */
@@ -84,8 +86,8 @@ export async function getReply(message: string, images: string[], app: AppState)
     if (res.status === 503) return fallback(); // API 키가 아직 없어요
     if (res.status === 429) return { text: "지금 질문이 많아서 잠시 후에 다시 답해 드릴게요." };
     if (!res.ok) return { text: "답변을 가져오지 못했어요. 잠시 후 다시 시도해 주세요." };
-    const data: { text?: string; products?: string[] } = await res.json();
-    return { text: data.text ?? "답변을 가져오지 못했어요. 잠시 후 다시 시도해 주세요.", products: data.products ?? [] };
+    const data: { text?: string; products?: string[]; closet?: string[] } = await res.json();
+    return { text: data.text ?? "답변을 가져오지 못했어요. 잠시 후 다시 시도해 주세요.", products: data.products ?? [], closet: data.closet };
   } catch {
     // 서버에 연결할 수 없을 때(오프라인 등)도 예시 답변으로 대신해요.
     return fallback();
@@ -105,6 +107,16 @@ async function attachmentReply(): Promise<Reply> {
 async function cannedReply(message: string, app: AppState): Promise<Reply> {
   await new Promise((r) => setTimeout(r, 700));
   const text = message.trim();
+
+  // 여성 캐주얼 · 정핏 코디는 옷장에 넣은 옷에서 골라 줘요 (lib/data.ts CLOSET_PICKS)
+  const closetRule = closetPicksFor(app.profile.gender, text);
+  if (closetRule && !isFirstWork(text)) {
+    return {
+      text: "새로 사지 않아도 옷장에 딱 맞는 조합이 있어요.\n던스트 70S 세미 플레어 진(S)에 미세키서울 언밸런스 니트 가디건을 걸치면 편하면서도 멋스러운 캐주얼 룩이 돼요.\n둘 다 판매처 실측을 저장해 둔 옷이라 정핏으로 입을 수 있어요. 가디건은 단추를 비대칭으로 잠가 포인트를 줘 보세요.",
+      closet: closetRule.samples,
+      chips: ["다른 코디도 볼래요", "신발은 뭐가 좋을까요?"],
+    };
+  }
 
   // 남성 데이트 룩은 시연용 고정 세트로 답해요 (lib/products.ts DATE_LOOK_MALE)
   if (app.profile.gender === "male" && /데이트|소개팅/.test(text)) {

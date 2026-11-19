@@ -158,8 +158,10 @@ export default function ClosetPage() {
       demo: p.demo,
       gender: demo?.gender,
       favorite: false,
-      confirmed: !!demo,
-      measures: demo ? demo.measures : {},
+      confirmed: !!demo || !!p.measures,
+      measures: demo ? demo.measures : (p.measures ?? {}),
+      size: p.size,
+      link: p.link,
     };
     setApp((s) => ({ closet: [item, ...s.closet] }));
     setSampleBusy(null);

@@ -5,6 +5,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { ChatContext, ChatTurn } from "@/lib/chat";
 import { pinnedPicks, PRODUCTS } from "@/lib/products";
+import { closetPicksFor } from "@/lib/data";
 
 const MODEL = "claude-sonnet-5-5"; // 주최측 가이드 권장: 평소에는 Sonnet 5.5
 const MAX_TURNS = 20; // 최근 대화만 보내요
@@ -31,7 +32,8 @@ const SYSTEM = `당신은 패션 쇼핑 앱 'Show Me'의 쇼핑메이트입니�
 - 사용자 성별이 여성이고 첫 출근·입사·신입 첫날 코디를 물으면, 반드시 'dunst-classic-vneck-sweater'(던스트 클래식 브이넥 스웨터), 'dunst-semi-bootcut-slacks'(던스트 세미 부츠컷 슬림 슬랙스), 'siyazu-boucle-long-coat'(시야쥬 울 블렌드 부클 롱코트) 세 개를 함께 추천해요. product_ids에 이 세 id를 이 순서로 넣고, 다른 상품은 넣지 않아요.
 - 이때 text에는 그레이 브이넥 니트(셔츠 레이어드도 좋아요)와 블랙 부츠컷 슬랙스, 다크 네이비 롱코트로 단정하고 신뢰감 있는 첫인상을 준다는 점과, 사용자의 치수와 사이즈표를 비교한 추천 사이즈를 짧게 써요. 코트는 원사이즈예요.
 
-- 위 두 경우가 아니면 이 고정 추천 상품들은 꼭 필요할 때만 추천해요 (남성에게 여성 첫 출근 세트를 추천하지 않아요).
+- 사용자 성별이 여성이고 캐주얼하게 입을 옷·정핏·데일리 코디를 물으면, 새 상품 대신 사용자의 옷장(아래 사용자 정보의 옷장 목록)에 있는 '던스트 70S 세미 플레어 진 미드 블루'와 '미세키서울 언밸런스 니트 가디건 화이트'를 함께 입는 코디를 추천해요. product_ids는 빈 배열로 두고, text에서 두 옷 이름을 말하며 옷장에 저장된 실측(사이즈)을 근거로 정핏으로 입을 수 있다고 설명해요. 옷장에 아직 없으면 사진 보관함에서 넣어 보라고 안내해요.
+- 위 경우가 아니면 이 고정 추천 상품들은 꼭 필요할 때만 추천해요 (남성에게 여성 첫 출근 세트를 추천하지 않아요).
 
 상품 추천:
 - 구체적인 상품은 아래 '추천 가능한 상품 목록' 안에서만 골라요. 목록에 없는 상품 이름·가격은 절대 지어내지 않아요.
@@ -190,6 +192,9 @@ export async function POST(request: Request) {
     const lastUser = [...history].reverse().find((t) => t.role === "user");
     const pinned = pinnedPicks(context?.profile?.gender, String(lastUser?.text ?? ""));
     if (pinned) products = [...pinned];
+    // 옷장에서 골라 주는 시연용 코디 (여성 캐주얼 · 정핏) — 상품 대신 옷장 옷 카드를 보여줘요
+    const closetRule = closetPicksFor(context?.profile?.gender, String(lastUser?.text ?? ""));
+    if (closetRule && !pinned) return Response.json({ text: text || "옷장에 있는 옷으로 골라 봤어요.", products: [], closet: closetRule.samples });
     return Response.json({ text: text || "답변을 만들지 못했어요. 다시 한 번 물어봐 주세요.", products });
   } catch (error) {
     if (error instanceof Anthropic.AuthenticationError) {
