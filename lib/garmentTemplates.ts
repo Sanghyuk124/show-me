@@ -32,6 +32,12 @@ export interface GarmentTemplate {
   /** 1이면 몸 점 하나에 붙은 옷 점 (offsets가 cm 그대로) */
   single: Uint8Array;
   index: Uint32Array;
+  /** 천 무늬용으로 나눈 점 → 원래 점 번호, 무늬 좌표(uv), 나눈 점으로 된 삼각형 */
+  split: Uint32Array;
+  uv: Float32Array;
+  splitIndex: Uint32Array;
+  /** 천의 주름·결(normal)과 접힌 곳 그림자(ao) 이미지 주소 */
+  textures: { normal?: string; ao?: string };
   /** 스커트처럼 몸통을 감싸는 옷: 기본 몸 기준 [높이, 각도, 중심에서 거리] (cm) */
   cyl?: { data: Float32Array; levels: CylLevels };
 }
@@ -46,7 +52,7 @@ export interface CylLevels {
 }
 
 interface Header {
-  templates: { key: TemplateKey; kind: "top" | "bottom"; label: string; vertexCount: number; cyl?: CylLevels }[];
+  templates: { key: TemplateKey; kind: "top" | "bottom"; label: string; vertexCount: number; textures: { normal?: string; ao?: string }; cyl?: CylLevels }[];
   arrays: Record<string, { type: string; count: number; offset: number }>;
 }
 
@@ -87,6 +93,9 @@ function parse(buf: ArrayBuffer) {
       offsets: get(`${t.key}_off`) as Float32Array,
       single: get(`${t.key}_single`) as Uint8Array,
       index: get(`${t.key}_index`) as Uint32Array,
+      split: get(`${t.key}_split`) as Uint32Array,
+      uv: get(`${t.key}_uv`) as Float32Array,
+      splitIndex: get(`${t.key}_sindex`) as Uint32Array,
       cyl: t.cyl ? { data: get(`${t.key}_cyl`) as Float32Array, levels: t.cyl } : undefined,
     });
   }

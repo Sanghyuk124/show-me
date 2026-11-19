@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { cn, TabHeader } from "@/components/ui";
-import { TASTE_PHOTOS } from "@/lib/data";
+import { TASTE_PHOTOS, tasteSet } from "@/lib/data";
 import { setApp, useApp } from "@/lib/store";
 
 /** 고른 사진의 태그를 세어 많이 나온 순서로 돌려줍니다. */
@@ -10,8 +11,6 @@ function rankTags(picks: number[]) {
   TASTE_PHOTOS.filter((p) => picks.includes(p.id)).forEach((p) => count.set(p.tag, (count.get(p.tag) ?? 0) + 1));
   return [...count.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2);
 }
-
-const same = (a: number[] | null, b: number[]) => !!a && a.length === b.length && a.every((n) => b.includes(n));
 
 function Row({ label, title, desc, children }: { label: string; title: string; desc: string; children?: React.ReactNode }) {
   return (
@@ -26,13 +25,32 @@ function Row({ label, title, desc, children }: { label: string; title: string; d
 
 /** Figma 08 · 취향 찾기 */
 export default function TastePage() {
-  const { tastePicks, tasteSaved } = useApp();
-  const ranked = rankTags(tastePicks);
+  const { tastePicks, tasteRound } = useApp();
+  // 지금 묶음에서 고른 사진 (저장하면 tastePicks에 더해지고, 다음 9장으로 넘어가요)
+  const [picked, setPicked] = useState<number[]>([]);
+  const [saved, setSaved] = useState(false);
+  const timer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+
+  const photos = tasteSet(tasteRound ?? 0);
+  const ranked = rankTags([...new Set([...tastePicks, ...picked])]);
   const total = ranked.reduce((sum, [, n]) => sum + n, 0);
   const direction = ranked.map(([t]) => t).join(" · ");
-  const saved = same(tasteSaved, tastePicks);
-  const toggle = (id: number) =>
-    setApp((s) => ({ tastePicks: s.tastePicks.includes(id) ? s.tastePicks.filter((n) => n !== id) : [...s.tastePicks, id] }));
+  const toggle = (id: number) => {
+    if (saved) return;
+    setPicked((cur) => (cur.includes(id) ? cur.filter((n) => n !== id) : [...cur, id]));
+  };
+  const save = () => {
+    if (!picked.length || saved) return;
+    setApp((s) => ({ tastePicks: [...new Set([...s.tastePicks, ...picked])] }));
+    setSaved(true);
+    // '저장했어요'를 잠깐 보여 준 뒤 다음 9장으로
+    timer.current = window.setTimeout(() => {
+      setApp((s) => ({ tasteRound: (s.tasteRound ?? 0) + 1 }));
+      setPicked([]);
+      setSaved(false);
+    }, 1100);
+  };
 
   return (
     <>
@@ -43,11 +61,14 @@ export default function TastePage() {
           <br />
           나만의 취향이 보여요.
         </h2>
-        <p className="text-[10px] leading-[1.4] text-sub">마음이 가는 사진을 눌러 보세요. 여러 장 선택할 수 있어요.</p>
+        <p className="flex text-[10px] leading-[1.4] text-sub">
+          <span className="flex-1">마음이 가는 사진을 눌러 보세요. 여러 장 선택할 수 있어요.</span>
+          <span className="shrink-0 font-medium text-plum">{picked.length ? `${picked.length}장 선택` : ""}</span>
+        </p>
 
-        <div className="mx-auto grid grid-cols-[repeat(3,80px)] gap-1.5">
-          {TASTE_PHOTOS.map((p) => {
-            const on = tastePicks.includes(p.id);
+        <div key={tasteRound} className="mx-auto grid animate-[pop_.35s_ease] grid-cols-[repeat(3,80px)] gap-1.5">
+          {photos.map((p) => {
+            const on = picked.includes(p.id);
             return (
               <button
                 key={p.id}
@@ -73,11 +94,19 @@ export default function TastePage() {
 
         <button
           type="button"
-          onClick={() => setApp((s) => ({ tasteSaved: s.tastePicks }))}
-          className="flex h-11 w-full shrink-0 items-center justify-center rounded-[10px] bg-plum px-4 py-3 text-[14px] font-bold text-white active:opacity-85"
+          onClick={save}
+          disabled={!picked.length && !saved}
+          aria-live="polite"
+          className={cn(
+            "flex h-11 w-full shrink-0 items-center justify-center rounded-[10px] px-4 py-3 text-[14px] font-bold text-white transition-colors active:opacity-85",
+            saved ? "bg-plum-soft" : "bg-plum disabled:opacity-40",
+          )}
         >
-          {saved ? "저장했어요" : "저장하기"}
+          {saved ? "저장했어요 ✓" : picked.length ? "저장하기" : "사진을 골라 주세요"}
         </button>
+        <p className="-mt-1 text-center text-[9.5px] text-faint">
+          {tastePicks.length ? `지금까지 ${tastePicks.length}장 저장 · ` : ""}저장하면 새로운 사진 9장이 나와요
+        </p>
 
         <section className="flex flex-col gap-[6.7px] rounded-[9.25px] bg-lav px-[10.6px] py-[8.6px]">
           <h3 className="text-[14px] leading-[1.4] font-bold text-plum">지금, 나의 취향 현황</h3>

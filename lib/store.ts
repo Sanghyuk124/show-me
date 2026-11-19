@@ -33,8 +33,10 @@ export interface AppState {
   concerns: string[];
   concernNote: string;
   stylePicks: number[];
+  /** 취향 찾기에서 지금까지 저장한 사진 번호 (모든 묶음) */
   tastePicks: number[];
-  tasteSaved: number[] | null;
+  /** 취향 찾기에서 지금 보고 있는 묶음 번호 (저장할 때마다 1씩) */
+  tasteRound: number;
   closet: ClosetItem[];
   body: Measures;
   tryOnLink: string;
@@ -57,8 +59,8 @@ const initialState: AppState = {
   concerns: ["advice"],
   concernNote: "",
   stylePicks: [0],
-  tastePicks: [1, 8],
-  tasteSaved: null,
+  tastePicks: [],
+  tasteRound: 0,
   closet: CLOSET_SEED,
   body: BODY_SEED,
   tryOnLink: "",

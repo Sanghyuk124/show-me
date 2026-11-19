@@ -121,6 +121,8 @@ const smooth = (a: number, b: number, x: number) => {
   return t * t * (3 - 2 * t);
 };
 const MIN_GAP = 0.35; // 옷이 몸에 붙어도 이만큼은 띄워서 겹치지 않게 (cm)
+/** 넉넉한 옷을 화면에서 얼마나 키울지: 천은 처지고 접히니 계산한 여유의 일부만, 최대 maxR cm 까지 */
+const looseR = (dr: number, maxR = 2.2) => (dr > 0 ? Math.min(maxR, dr * 0.7) : dr);
 
 /* ───────── 핏 판단 ───────── */
 
@@ -453,9 +455,12 @@ export function buildGarment(model: AvatarModel, pos: Float32Array, spec: Garmen
     const pu = dot(d, S.u);
     const pv = dot(d, S.v);
     const th = Math.atan2(pv, pu);
-    // 옷 본의 매끈한 모양(r)은 그대로 두고 둘레만 dr만큼, 몸(+간격) 안으로 들어가는 곳만 몸 밖으로 밀어요
+    // 옷 본의 매끈한 모양(r)은 그대로 두고 둘레만 dr만큼.
+    // 위아래로 옮겼거나 줄일 때만 몸(+간격) 밖으로 밀어요 (그대로인 곳은 MakeHuman 옷 모양 그대로)
+    const r = Math.hypot(pu, pv);
     const rb2 = S.r(t2, th);
-    const r2 = Math.max(rb2 + gap, Math.hypot(pu, pv) + dr);
+    const moved = Math.abs(t2 - t) > 0.05 || dr < 0;
+    const r2 = moved ? Math.max(rb2 + gap, r + dr) : r + dr;
     const c2 = S.center(t2);
     const cu = Math.cos(th) * r2, cv = Math.sin(th) * r2;
     out[0] = c2[0] + S.u[0] * cu + S.v[0] * cv;
@@ -504,7 +509,7 @@ export function buildGarment(model: AvatarModel, pos: Float32Array, spec: Garmen
       if (under && y < underTop + 1) c = Math.max(c, (y <= hips.y ? under.measures.hip : under.measures.waist) + 4);
       return c;
     };
-    const sleeveDr = Math.min(3, Math.max(-1, ((gChest - gTorso.perim(bust.y)) / TAU) * 0.35));
+    const sleeveDr = Math.min(1, Math.max(-1, ((gChest - gTorso.perim(bust.y)) / TAU) * 0.2)); // 소매 굵기는 옷 본에 가깝게
 
     for (let i = 0; i < nq; i++) {
       const P: V3 = [Q[i * 3], Q[i * 3 + 1], Q[i * 3 + 2]];
@@ -512,7 +517,7 @@ export function buildGarment(model: AvatarModel, pos: Float32Array, spec: Garmen
       // 몸통 쪽
       const y2 = mapY(P[1]);
       const keepShoulder = smooth(bust.y, tipY, y2); // 어깨 쪽은 옷 본 그대로
-      const dr = ((gc(y2) - gTorso.perim(P[1])) / TAU) * (1 - keepShoulder);
+      const dr = looseR((gc(y2) - gTorso.perim(P[1])) / TAU) * (1 - keepShoulder);
       move(layerS, P, P[1], y2, dr, under && y2 < underTop + 3 ? 1.2 : MIN_GAP, pt); // 바지 위는 조금 더 띄워요
       // 소매 쪽
       if (aw > 0) {
@@ -520,15 +525,27 @@ export function buildGarment(model: AvatarModel, pos: Float32Array, spec: Garmen
         const t = axial(P, tips[sd], dirs[sd]);
         move(armS[sd], P, t, mapT(t, sd), sleeveDr, MIN_GAP, pa);
       }
-      for (let d = 0; d < 3; d++) positions[i * 3 + d] = pt[d] + (pa[d] - pt[d]) * aw;
+      // 어깨·목둘레는 MakeHuman 옷 본 그대로 (칼라·어깨선이 자연스럽게)
+      const keep = keepShoulder * (1 - aw);
+      for (let d = 0; d < 3; d++) positions[i * 3 + d] = (pt[d] + (pa[d] - pt[d]) * aw) * (1 - keep) + P[d] * keep;
       if (aw > 0.5) heatColor(pa[3] * TAU, 2, 8, heat, i * 3);
       else heatColor(y2 > bust.y ? chestEase : gc(y2) - torsoS.perim(y2), 4, 16, heat, i * 3);
     }
     // 옷 아래 가려지는 몸은 그리지 않아요 (끝선 근처는 남겨 둬요)
+    // 목선 높이: 앞·뒤 가운데에서 옷이 끝나는 높이 (V넥은 낮고, 라운드넥은 높아요)
+    let frontTop = bust.y;
+    let backTop = bust.y;
+    for (let i = 0; i < nq; i++) {
+      const x = positions[i * 3], y = positions[i * 3 + 1], z = positions[i * 3 + 2];
+      if (Math.abs(x) > 2 || wArm[i] > 0.3) continue;
+      if (z > torsoS.center(y)[2]) frontTop = Math.max(frontTop, y);
+      else backTop = Math.max(backTop, y);
+    }
     for (let i = 0; i < nb; i++) {
       const y = pos[i * 3 + 1];
       const af = model.armF[i] / 255;
-      if (af < 0.3 && y >= hemY + 2.5 && y <= bust.y) covers[i] = 1;
+      const neck = (pos[i * 3 + 2] > torsoS.center(y)[2] ? frontTop : backTop) - 2.5;
+      if (af < 0.3 && y >= hemY + 2.5 && y <= neck) covers[i] = 1;
       else if (af > 0.7) {
         const sd = side(pos[i * 3]);
         const t = axial([pos[i * 3], y, pos[i * 3 + 2]], tips[sd], dirs[sd]);
@@ -567,7 +584,7 @@ export function buildGarment(model: AvatarModel, pos: Float32Array, spec: Garmen
     for (let i = 0; i < nq; i++) {
       const P: V3 = [Q[i * 3], Q[i * 3 + 1], Q[i * 3 + 2]];
       const y2 = mapY(P[1]);
-      const dr = y2 >= hy ? (gcTop(y2) - gTorso.perim(P[1])) / TAU : hipDr;
+      const dr = looseR(y2 >= hy ? (gcTop(y2) - gTorso.perim(P[1])) / TAU : hipDr);
       move(torsoS, P, P[1], y2, dr, MIN_GAP, pt);
       positions.set([pt[0], pt[1], pt[2]], i * 3);
       heatColor(y2 >= hy ? gcTop(y2) - torsoS.perim(y2) : g.hip - hips.c, 2, 10, heat, i * 3);
@@ -601,10 +618,10 @@ export function buildGarment(model: AvatarModel, pos: Float32Array, spec: Garmen
       const P: V3 = [Q[i * 3], Q[i * 3 + 1], Q[i * 3 + 2]];
       const lw = smooth(0.3, 0.7, wLeg[i]);
       const y2 = mapY(P[1]);
-      move(torsoS, P, P[1], y2, (gcTorso(y2) - gTorso.perim(P[1])) / TAU, MIN_GAP, pt);
+      move(torsoS, P, P[1], y2, looseR((gcTorso(y2) - gTorso.perim(P[1])) / TAU, 1.5), MIN_GAP, pt);
       if (lw > 0) {
         const sd = side(P[0]);
-        move(legS[sd], P, P[1], y2, (legGc(y2) - gLeg[sd].perim(P[1])) / TAU, MIN_GAP, pl);
+        move(legS[sd], P, P[1], y2, looseR((legGc(y2) - gLeg[sd].perim(P[1])) / TAU, 1.8), MIN_GAP, pl);
       }
       for (let d = 0; d < 3; d++) positions[i * 3 + d] = pt[d] + (pl[d] - pt[d]) * lw;
       if (lw > 0.5) heatColor(legGc(y2) - legS[side(P[0])].perim(y2), 3, 12, heat, i * 3);

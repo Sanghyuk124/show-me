@@ -106,6 +106,52 @@ function createBody(model: AvatarModel, gender: BodyShape["gender"]) {
   return { group, body, eyes, position };
 }
 
+/**
+ * 옷 3D 모양: 방향(법선)은 원래 점끼리 이어서 매끈하게 구하고,
+ * 천 무늬 좌표가 다른 점은 나눠서 이미지가 제자리에 붙게 해요.
+ */
+function garmentGeometry(gm: GarmentMesh, tpl: GarmentTemplate) {
+  const tmp = new THREE.BufferGeometry();
+  tmp.setAttribute("position", new THREE.BufferAttribute(gm.positions, 3));
+  tmp.setIndex(new THREE.BufferAttribute(gm.index, 1));
+  tmp.computeVertexNormals();
+  const nrm = tmp.getAttribute("normal").array as Float32Array;
+  const n = tpl.split.length;
+  const p = new Float32Array(n * 3);
+  const nn = new Float32Array(n * 3);
+  const c = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const o = tpl.split[i] * 3;
+    for (let d = 0; d < 3; d++) {
+      p[i * 3 + d] = gm.positions[o + d];
+      nn[i * 3 + d] = nrm[o + d];
+      c[i * 3 + d] = gm.heat[o + d];
+    }
+  }
+  tmp.dispose();
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(p, 3));
+  geo.setAttribute("normal", new THREE.BufferAttribute(nn, 3));
+  geo.setAttribute("color", new THREE.BufferAttribute(c, 3));
+  geo.setAttribute("uv", new THREE.BufferAttribute(tpl.uv, 2));
+  geo.setIndex(new THREE.BufferAttribute(tpl.splitIndex, 1));
+  return geo;
+}
+
+const textures = new Map<string, THREE.Texture>();
+/** 옷 이미지(노멀맵·AO)를 한 번만 불러와 같이 써요 */
+function fabricTexture(url: string | undefined) {
+  if (!url) return null;
+  let t = textures.get(url);
+  if (!t) {
+    t = new THREE.TextureLoader().load(url);
+    t.colorSpace = THREE.NoColorSpace; // 색이 아니라 데이터 이미지예요
+    t.anisotropy = 4;
+    textures.set(url, t);
+  }
+  return t;
+}
+
 /** 세 꼭짓점이 모두 옷에 덮인 몸 삼각형은 빼요 */
 function visibleIndex(index: Uint32Array, covered: Uint8Array) {
   if (!covered.some((c) => c)) return index;
@@ -118,7 +164,9 @@ function visibleIndex(index: Uint32Array, covered: Uint8Array) {
 }
 
 /** 세 꼭짓점이 모두 높이 y보다 위인 삼각형은 빼요 */
-function hiddenAbove(index: Uint32Array, pos: Float32Array, y: number) {
+function hiddenAbove(geo: THREE.BufferGeometry, y: number) {
+  const index = geo.index!.array as Uint32Array;
+  const pos = geo.getAttribute("position").array as Float32Array;
   const out: number[] = [];
   for (let t = 0; t < index.length; t += 3) {
     if (pos[index[t] * 3 + 1] > y && pos[index[t + 1] * 3 + 1] > y && pos[index[t + 2] * 3 + 1] > y) continue;
@@ -297,19 +345,24 @@ export function Avatar3D({
         const gm = buildGarment(model, body.position.array as Float32Array, spec, tpl, spec.kind === "top" ? bottomMesh : undefined);
         if (spec.kind === "bottom") bottomMesh = gm;
         gm.covers.forEach((c, i) => c && (covered[i] = 1));
-        const geo = new THREE.BufferGeometry();
-        geo.setAttribute("position", new THREE.BufferAttribute(gm.positions, 3));
-        geo.setAttribute("color", new THREE.BufferAttribute(gm.heat, 3));
-        geo.setIndex(new THREE.BufferAttribute(gm.index, 1));
-        geo.computeVertexNormals();
-        const mat = heat
-          ? new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9, side: THREE.DoubleSide })
-          : new THREE.MeshStandardMaterial({ color: spec.color, roughness: 0.88, side: THREE.DoubleSide });
+        const geo = garmentGeometry(gm, tpl);
+        // 천의 주름·결(노멀맵)과 접힌 곳 그림자(AO)는 MakeHuman 옷 이미지를 써요
+        const mat = new THREE.MeshStandardMaterial({
+          color: heat ? "#ffffff" : spec.color,
+          vertexColors: heat,
+          roughness: 0.92,
+          metalness: 0,
+          side: THREE.DoubleSide,
+          normalMap: fabricTexture(tpl.textures.normal),
+          aoMap: fabricTexture(tpl.textures.ao),
+          aoMapIntensity: 0.85,
+        });
+        mat.normalScale.set(0.9, 0.9);
         clothes.add(new THREE.Mesh(geo, mat));
         if (spec.kind === "bottom") bottomGeo = geo;
         // 상의를 입으면 밑단보다 위의 바지는 가려지니 그리지 않아요 (바지가 상의 밖으로 비치지 않게)
         if (spec.kind === "top" && bottomGeo && bottomMesh && gm.hemY !== undefined) {
-          bottomGeo.setIndex(new THREE.BufferAttribute(hiddenAbove(bottomMesh.index, bottomMesh.positions, gm.hemY + 3), 1));
+          bottomGeo.setIndex(new THREE.BufferAttribute(hiddenAbove(bottomGeo, gm.hemY + 3), 1));
         }
         reports.push({ name: spec.name, kind: spec.kind, lines: gm.report });
       }
