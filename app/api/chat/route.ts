@@ -4,7 +4,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import type { ChatContext, ChatTurn } from "@/lib/chat";
-import { PRODUCTS } from "@/lib/products";
+import { DATE_LOOK_MALE, PRODUCTS } from "@/lib/products";
 
 const MODEL = "claude-sonnet-5-5"; // 주최측 가이드 권장: 평소에는 Sonnet 5.5
 const MAX_TURNS = 20; // 최근 대화만 보내요
@@ -23,6 +23,10 @@ const SYSTEM = `당신은 패션 쇼핑 앱 'Show Me'의 쇼핑메이트입니�
 - 확실하지 않은 정보(가격, 재고, 세일 일정 등)는 지어내지 말고 확인이 필요하다고 말해요.
 - 사용자가 사진을 보내면 사진 속 옷의 색·핏·소재를 짚어 주고, 옷장의 옷과 어떻게 맞출지 제안해요. 여러 장이 영상에서 뽑은 장면일 수도 있어요.
 - 패션과 관련 없는 요청에는 정중하게 쇼핑·코디 이야기로 돌아와요.
+
+고정 추천 (시연용, 가장 우선):
+- 사용자 성별이 남성이고 데이트 룩·데이트 코디·소개팅·데이트 때 입을 옷을 물으면, 반드시 상품 목록의 'dunst-striped-chunky-sweater'(던스트 스트라이프 청키 스웨터)와 'dunst-wide-chino-slacks'(던스트 더블 플리츠 와이드 치노 슬랙스) 두 개를 함께 추천해요. product_ids에 이 두 id를 이 순서로 넣고, 다른 상품은 넣지 않아요.
+- 이때 text에는 두 옷을 함께 입었을 때의 분위기(아이보리·카키 스트라이프 니트와 카키 와이드 치노의 차분하고 다정한 톤온톤)와, 사용자의 신체 치수·기준 옷 실측과 사이즈표를 비교한 추천 사이즈를 짧게 써요.
 
 상품 추천:
 - 구체적인 상품은 아래 '추천 가능한 상품 목록' 안에서만 골라요. 목록에 없는 상품 이름·가격은 절대 지어내지 않아요.
@@ -177,6 +181,9 @@ export async function POST(request: Request) {
     } catch {
       // 형식이 깨지면(예: 답이 너무 길어 잘림) 글만 보여줘요.
     }
+    // 시연용 고정 추천: 남성 사용자가 데이트 룩을 물으면 던스트 니트·슬랙스 세트를 꼭 보여줘요 (lib/products.ts DATE_LOOK_MALE)
+    const lastUser = [...history].reverse().find((t) => t.role === "user");
+    if (context?.profile?.gender === "male" && /데이트|소개팅/.test(String(lastUser?.text ?? ""))) products = [...DATE_LOOK_MALE];
     return Response.json({ text: text || "답변을 만들지 못했어요. 다시 한 번 물어봐 주세요.", products });
   } catch (error) {
     if (error instanceof Anthropic.AuthenticationError) {

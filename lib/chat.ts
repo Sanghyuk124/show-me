@@ -5,7 +5,7 @@
 import { myCloset, type AppState } from "./store";
 import { guessCategory } from "./classify";
 import { CONCERNS, PERSONAL_COLORS, tastePhoto, type ClosetItem, type Measures, type Profile } from "./data";
-import { PRODUCTS } from "./products";
+import { DATE_LOOK_MALE, PRODUCTS } from "./products";
 
 export interface Reply {
   text: string;
@@ -105,6 +105,15 @@ async function attachmentReply(): Promise<Reply> {
 async function cannedReply(message: string, app: AppState): Promise<Reply> {
   await new Promise((r) => setTimeout(r, 700));
   const text = message.trim();
+
+  // 남성 데이트 룩은 시연용 고정 세트로 답해요 (lib/products.ts DATE_LOOK_MALE)
+  if (app.profile.gender === "male" && /데이트|소개팅/.test(text)) {
+    return {
+      text: "데이트 룩으로는 던스트의 스트라이프 청키 스웨터와 더블 플리츠 와이드 치노 슬랙스를 추천해요.\n아이보리·카키 스트라이프 니트에 같은 카키 톤의 와이드 치노를 맞추면 차분하면서도 다정한 인상을 줘요.\n기준 옷 실측을 입력해 두면 맞는 사이즈도 함께 알려드릴게요.",
+      products: DATE_LOOK_MALE,
+      chips: ["사이즈가 고민돼요", "신발은 뭐가 좋을까요?"],
+    };
+  }
 
   // 상품 추천을 물으면 상품 목록에서 종류가 맞는 것을 골라 보여줘요.
   if (/추천|상품|브랜드|살까|사고 싶|구매|쇼핑/.test(text) && PRODUCTS.length) {
