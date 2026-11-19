@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Category, ClosetItem, Measures } from "@/lib/data";
 import { GENDER_LABEL } from "@/lib/data";
-import { updateItem, useApp } from "@/lib/store";
+import { myCloset, updateItem, useApp } from "@/lib/store";
 import { cn, decimal, Modal } from "./ui";
 
 // optional: 비워도 저장할 수 있는 항목 (가슴 둘레는 아바타에 옷을 입혀 볼 때 핏을 더 정확하게 보여줘요)
@@ -88,7 +88,7 @@ export function MeasureModal({ item, onClose }: { item: ClosetItem; onClose: () 
     updateItem(item.id, { measures: draft, confirmed: true });
     onClose();
   };
-  const topDone = app.closet.some((i) => i.favorite && (i.category === "top" || i.category === "outer") && i.confirmed);
+  const topDone = myCloset(app).some((i) => i.favorite && (i.category === "top" || i.category === "outer") && i.confirmed);
   const separate = item.category === "bag" || item.category === "outer";
 
   return (
@@ -200,7 +200,7 @@ export function ProductDetailModal({ item, onClose, onAddToCart }: { item: Close
   const app = useApp();
   const copy = COPY[item.category];
   const g = guide(item);
-  const topDone = app.closet.some((i) => i.favorite && (i.category === "top" || i.category === "outer") && i.confirmed);
+  const topDone = myCloset(app).some((i) => i.favorite && (i.category === "top" || i.category === "outer") && i.confirmed);
   const status = item.confirmed ? "기준 실측 완료" : item.prefilled ? "예시 확인 필요" : "실측 확인 필요";
 
   return (

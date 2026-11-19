@@ -2,7 +2,7 @@
 // - 서버에 Claude API 키(ANTHROPIC_API_KEY)가 있으면 app/api/chat/route.ts 를 통해 Claude가 답해요.
 // - 키가 없으면 아래 cannedReply 의 '미리 써둔 예시 답변'으로 대신 답해요.
 
-import type { AppState } from "./store";
+import { myCloset, type AppState } from "./store";
 import { guessCategory } from "./classify";
 import { CONCERNS, PERSONAL_COLORS, tastePhoto, type ClosetItem, type Measures, type Profile } from "./data";
 import { PRODUCTS } from "./products";
@@ -61,7 +61,7 @@ function buildContext(app: AppState): ChatContext {
     concernNote: app.concernNote,
     taste,
     body: app.body,
-    closet: app.closet.map(({ name, category, favorite, size, measures }) => ({ name, category, favorite, size, measures })),
+    closet: myCloset(app).map(({ name, category, favorite, size, measures }) => ({ name, category, favorite, size, measures })),
   };
 }
 
@@ -117,7 +117,7 @@ async function cannedReply(message: string, app: AppState): Promise<Reply> {
       chips: ["사이즈가 고민돼요", "다른 코디도 볼래요"],
     };
   }
-  const bottom = app.closet.find((i) => i.category === "bottom" && i.favorite);
+  const bottom = myCloset(app).find((i) => i.category === "bottom" && i.favorite);
 
   if (/https?:\/\/|www\.|\.com|\.kr/i.test(text)) {
     return {

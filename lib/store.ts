@@ -100,6 +100,13 @@ function load() {
     if (saved) state = { ...initialState, ...saved };
     // 예전 버전은 취향 사진을 숫자로 기억했어요 → 이름(문자) 방식으로 바뀌어서 비워요
     if (state.tastePicks.some((x) => typeof x !== "string")) state = { ...state, tastePicks: [], tasteOrder: [], tasteRound: 0 };
+    // 새로 추가된 시연용 옷(예: 남성 세트)이 저장된 옷장에 없으면 넣어 줘요
+    if (saved) {
+      const missing = CLOSET_SEED.filter((c) => c.demo && !state.closet.some((i) => i.id === c.id));
+      if (missing.length) state = { ...state, closet: [...state.closet, ...missing] };
+      // 예전 기본 옷에는 성별 표시가 없었어요 → 예시 옷 정보로 맞춰요
+      state = { ...state, closet: state.closet.map((i) => (i.gender ? i : { ...i, gender: CLOSET_SEED.find((c) => c.id === i.id)?.gender })) };
+    }
     // 예전 버전은 장바구니에 예시 옷 3벌이 기본으로 들어 있었어요 → 한 번만 비워요
     if (saved && !saved.cartSeedCleared) {
       const seedIds = CART_SEED.map((c) => c.id);
@@ -127,6 +134,11 @@ function commit(next: AppState) {
 function subscribe(listener: () => void) {
   listeners.add(listener);
   return () => listeners.delete(listener);
+}
+
+/** 지금 사용자 성별에 맞는 옷장 (성별이 정해진 예시 옷은 그 성별에게만 보여요) */
+export function myCloset(app: Pick<AppState, "closet" | "profile">) {
+  return app.closet.filter((i) => !i.gender || i.gender === app.profile.gender);
 }
 
 /** 화면에서 데이터를 읽을 때: const app = useApp(); */

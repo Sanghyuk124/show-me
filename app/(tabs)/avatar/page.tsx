@@ -12,7 +12,7 @@ import type { BodyLayout, GarmentReport } from "@/components/Avatar3D";
 import { TryOn2D } from "@/components/TryOn2D";
 import { FIT_COLOR, FIT_LABEL, garmentColor, missingFor, toGarment, type GarmentSpec } from "@/lib/garment";
 import type { ClosetItem } from "@/lib/data";
-import { setApp, showToast, useApp } from "@/lib/store";
+import { setApp, showToast, useApp, myCloset } from "@/lib/store";
 
 // 3D 그래픽은 브라우저에서만 그릴 수 있어서, 화면이 열린 뒤에 불러와요.
 const Avatar3D = dynamic(() => import("@/components/Avatar3D").then((m) => m.Avatar3D), {
@@ -22,9 +22,10 @@ const Avatar3D = dynamic(() => import("@/components/Avatar3D").then((m) => m.Ava
 
 export default function AvatarPage() {
   const app = useApp();
+  const closet = myCloset(app);
   const [bodyOpen, setBodyOpen] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
-  const openItem = app.closet.find((i) => i.id === openId);
+  const openItem = closet.find((i) => i.id === openId);
   // 키·몸무게·성별과 상세 치수로 3D 아바타 모양을 정해요 (lib/bodyModel.ts)
   const shape = resolveBody(app.profile, app.body);
 
@@ -37,7 +38,7 @@ export default function AvatarPage() {
   const [colors, setColors] = useState<Record<string, string>>({});
   // 겹쳐 입기: 하의 → 상의 → 아우터 순서로 입혀요
   const worn = [app.wearing?.bottom, app.wearing?.top, app.wearing?.outer]
-    .map((id) => app.closet.find((i) => i.id === id))
+    .map((id) => closet.find((i) => i.id === id))
     .filter((i): i is ClosetItem => !!i);
   const garments = worn
     .map((item) => toGarment(item, colors[item.id] ?? "#8a8580"))
@@ -195,10 +196,10 @@ export default function AvatarPage() {
               전체 보기 →
             </Link>
           </div>
-          <p className="text-[10px] leading-[1.4] whitespace-pre text-sub">{`내 옷 ${app.closet.length}개  ·  ★ 즐겨찾는 기준 옷`}</p>
+          <p className="text-[10px] leading-[1.4] whitespace-pre text-sub">{`내 옷 ${closet.length}개  ·  ★ 즐겨찾는 기준 옷`}</p>
 
           <div className="grid grid-cols-2 gap-x-[7px] gap-y-[9.4px]">
-            {app.closet.map((item) => {
+            {closet.map((item) => {
               const wearing = app.wearing?.top === item.id || app.wearing?.bottom === item.id || app.wearing?.outer === item.id;
               return (
                 <div key={item.id} className="flex min-w-0 flex-col items-center gap-[3.5px]">

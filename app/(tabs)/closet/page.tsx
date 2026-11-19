@@ -9,8 +9,9 @@ import { RegisterItemModal, type NewItemSource } from "@/components/RegisterItem
 import { cn, Modal, TabHeader } from "@/components/ui";
 import type { ClosetItem } from "@/lib/data";
 import { removeBackground } from "@/lib/cutout";
+import { DEMO_GARMENTS } from "@/lib/demoGarments";
 import { shrinkPhoto } from "@/lib/media";
-import { setApp, showToast, updateItem, useApp } from "@/lib/store";
+import { setApp, showToast, updateItem, useApp, myCloset } from "@/lib/store";
 
 const FILTERS = [
   { id: "all", label: "전체", match: () => true },
@@ -88,6 +89,7 @@ function objectJosa(word: string) {
 
 export default function ClosetPage() {
   const app = useApp();
+  const closet = myCloset(app);
   const fileRef = useRef<HTMLInputElement>(null);
   const [filter, setFilter] = useState("all");
   const [oldestFirst, setOldestFirst] = useState(false);
@@ -120,7 +122,7 @@ export default function ClosetPage() {
     setApp(() => ({ pendingLink: null }));
   };
 
-  const favorites = app.closet.filter((i) => i.favorite);
+  const favorites = closet.filter((i) => i.favorite);
   const pick = (cats: string[]) => {
     const list = favorites.filter((i) => cats.includes(i.category));
     return list.find((i) => i.confirmed) ?? list[0];
@@ -131,18 +133,20 @@ export default function ClosetPage() {
 
   const visible = useMemo(() => {
     const match = FILTERS.find((f) => f.id === filter)!.match;
-    const list = app.closet.filter(match);
+    const list = closet.filter(match);
     const ordered = oldestFirst ? [...list].reverse() : list;
     // 즐겨찾기한 옷은 각 탭에서 맨 위에 보여요 (그 안에서는 등록 순서 유지).
     return [...ordered.filter((i) => i.favorite), ...ordered.filter((i) => !i.favorite)];
-  }, [app.closet, filter, oldestFirst]);
+  }, [closet, filter, oldestFirst]);
 
-  const openItem = app.closet.find((i) => i.id === openId);
+  const openItem = closet.find((i) => i.id === openId);
 
   // 예시 사진을 누르면: 누끼를 따서 정해진 이름·종류로 옷장에 바로 넣어요
   const onSample = async (p: SamplePhoto) => {
     setSampleBusy(p.id);
-    const cut = await removeBackground(p.src).catch(() => ({ image: p.src, ok: false }));
+    // 시연용 옷이면 미리 따 둔 누끼와 실측을 그대로 써요 (lib/demoGarments.ts)
+    const demo = p.demo ? DEMO_GARMENTS[p.demo] : undefined;
+    const cut = demo ? { image: demo.image, ok: true } : await removeBackground(p.src).catch(() => ({ image: p.src, ok: false }));
     const item: ClosetItem = {
       id: `item-${Date.now()}`,
       name: p.name,
@@ -151,9 +155,11 @@ export default function ClosetPage() {
       image: cut.image,
       cutout: cut.ok,
       sample: p.id,
+      demo: p.demo,
+      gender: demo?.gender,
       favorite: false,
-      confirmed: false,
-      measures: {},
+      confirmed: !!demo,
+      measures: demo ? demo.measures : {},
     };
     setApp((s) => ({ closet: [item, ...s.closet] }));
     setSampleBusy(null);
@@ -218,7 +224,7 @@ export default function ClosetPage() {
 
         <div className="flex flex-col gap-2">
           <div className="flex items-start leading-[1.4]">
-            <h2 className="flex-1 text-[14px] font-bold whitespace-pre">{`내 옷  ${app.closet.length}`}</h2>
+            <h2 className="flex-1 text-[14px] font-bold whitespace-pre">{`내 옷  ${closet.length}`}</h2>
             <button type="button" onClick={() => setOldestFirst((v) => !v)} className="text-[10px] whitespace-pre text-sub">
               {oldestFirst ? "오래된 순  ↑" : "최근 등록순  ↓"}
             </button>
@@ -312,7 +318,7 @@ export default function ClosetPage() {
       {choosing && (
         <FavoritePicker
           type={choosing}
-          items={app.closet.filter(TYPE_MATCH[choosing])}
+          items={closet.filter(TYPE_MATCH[choosing])}
           onClose={() => setChoosing(null)}
           onPick={(item) => {
             updateItem(item.id, { favorite: true });
