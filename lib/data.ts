@@ -101,10 +101,32 @@ export const CONCERNS = [
  * 사진을 누르면 배경을 지워(누끼) 아래 이름·종류로 옷장에 바로 들어가요.
  * 사진 파일: public/demo-photos/ · 더하려면 같은 형식으로 한 줄 넣으면 돼요.
  */
-export const SAMPLE_PHOTOS: Record<Gender, { id: string; name: string; category: Category; src: string; demo?: string }[]> = {
+export const SAMPLE_PHOTOS: Record<
+  Gender,
+  { id: string; name: string; category: Category; src: string; demo?: string; measures?: Measures; size?: string; link?: string }[]
+> = {
+  // 여성: 채팅에서 '캐주얼 · 정핏' 코디를 물으면 옷장에 넣은 이 두 벌을 추천해요 (CLOSET_PICKS)
   female: [
-    { id: "women-cardigan", name: "아이보리 가디건", category: "outer", src: "/demo-photos/women-cardigan.jpg" },
-    { id: "women-denim", name: "블루 스트레이트 데님", category: "bottom", src: "/demo-photos/women-denim.jpg" },
+    {
+      id: "women-cardigan",
+      name: "미세키서울 언밸런스 니트 가디건 화이트",
+      category: "outer",
+      src: "/demo-photos/women-cardigan.jpg",
+      size: "OS",
+      link: "https://misekiseoul.kr/product/unbalanced-knit-cardigan-white/246/category/29/display/1/",
+      // 상품 페이지 (단면, 원사이즈): Length 53 · Shoulder 33 · Chest 44 · Hem 36 · Arm 66
+      measures: { length: "53", shoulder: "33", chest: "88", waist: "72", sleeve: "66" },
+    },
+    {
+      id: "women-denim",
+      name: "던스트 70S 세미 플레어 진 미드 블루",
+      category: "bottom",
+      src: "/demo-photos/women-denim.jpg",
+      size: "S",
+      link: "https://dunststudio.com/product/detail.html?product_no=7440&cate_no=466&display_group=1",
+      // 상품 페이지 S (단면): 총장104 허리34.5 힙45.5 허벅지28 밑단23.5 밑위28.5
+      measures: { length: "104", waist: "69", hip: "91", thigh: "56", hem: "47", rise: "28.5" },
+    },
   ],
   male: [
     { id: "men-knit", name: "네이비 UCLA 니트", category: "top", src: "/demo-photos/men-knit.jpg", demo: "m-knit" },
@@ -175,6 +197,15 @@ export const LINK_PRESETS: LinkPreset[] = [
     },
   },
 ];
+
+/** 채팅에서 옷장 옷을 추천하는 시연용 규칙: 성별·질문에 맞으면 옷장에 넣은 이 예시 사진 옷들을 추천해요 */
+export const CLOSET_PICKS: { gender: Gender; match: RegExp; samples: string[]; label: string }[] = [
+  { gender: "female", match: /캐주얼|정핏|정사이즈|데일리/, samples: ["women-denim", "women-cardigan"], label: "여성 캐주얼 · 정핏 코디" },
+];
+
+export function closetPicksFor(gender: Gender | undefined, text: string) {
+  return CLOSET_PICKS.find((r) => r.gender === gender && r.match.test(text)) ?? null;
+}
 
 /** 온보딩 '좋아하는 스타일'(4번째 화면)에 보이는 사진 수. 취향 찾기 사진(아래 TASTE_PHOTOS)에서 성별별로 랜덤으로 골라요. */
 export const STYLE_PICK_COUNT = 12;

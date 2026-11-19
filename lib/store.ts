@@ -28,6 +28,8 @@ export interface ChatMessage {
   video?: boolean;
   /** 쇼핑메이트가 함께 추천한 상품 id (lib/products.ts) */
   products?: string[];
+  /** 쇼핑메이트가 옷장에서 골라 준 옷 (사진 보관함 예시 사진 id, lib/data.ts SAMPLE_PHOTOS) */
+  closet?: string[];
 }
 
 export interface AppState {

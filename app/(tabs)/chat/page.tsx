@@ -8,8 +8,10 @@ import { FIRST_CHIPS, getReply } from "@/lib/chat";
 import { shrinkPhoto, videoFrames } from "@/lib/media";
 import { findProduct, type Product } from "@/lib/products";
 import { won } from "@/components/ui";
-import { CART_SEED } from "@/lib/data";
-import { setApp, showToast, useApp, type ChatMessage } from "@/lib/store";
+import Link from "next/link";
+import { ClosetThumb } from "@/components/ClosetThumb";
+import { CART_SEED, SAMPLE_PHOTOS } from "@/lib/data";
+import { myCloset, setApp, showToast, useApp, type ChatMessage } from "@/lib/store";
 
 const OUTFIT = [
   { id: "shirt", label: "셔츠", name: "아이보리 셔츠", src: "/images/closet/shirt.jpg" },
@@ -137,6 +139,44 @@ function ProductCards({ ids }: { ids: string[] }) {
   );
 }
 
+/** 쇼핑메이트가 옷장에서 골라 준 옷 카드 (사진 보관함 예시 사진으로 넣은 옷) */
+function ClosetCards({ samples }: { samples: string[] }) {
+  const app = useApp();
+  const closet = myCloset(app);
+  const all = [...SAMPLE_PHOTOS.female, ...SAMPLE_PHOTOS.male];
+  const rows = samples
+    .map((id) => ({ sample: all.find((s) => s.id === id), item: closet.find((i) => i.sample === id) }))
+    .filter((r) => r.sample);
+  if (!rows.length) return null;
+  return (
+    <section className="flex flex-col gap-[9.1px] rounded-[12.5px] border-[0.9px] border-line bg-white px-[12.5px] py-[11.25px]">
+      <div className="flex leading-[1.4]">
+        <h2 className="flex-1 text-[13.4px] font-bold">내 옷장에서 골랐어요</h2>
+        <span className="text-[10px] font-medium text-plum">{rows.length}벌</span>
+      </div>
+      {rows.map(({ sample, item }) => (
+        <div key={sample!.id} className="flex items-center gap-2.5">
+          {item ? (
+            <ClosetThumb item={item} className="size-16 shrink-0 rounded-[8.93px]" />
+          ) : (
+            <img src={sample!.src} alt={sample!.name} className="size-16 shrink-0 rounded-[8.93px] object-cover" />
+          )}
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5 leading-[1.4]">
+            <span className="text-[10px] text-sub">{item ? "내 옷장" : "사진 보관함"}</span>
+            <span className="line-clamp-2 text-[12px] font-bold">{item?.name ?? sample!.name}</span>
+            <span className="text-[10px] font-medium text-plum">
+              {item ? `사이즈 ${item.size ?? sample!.size ?? "-"} · 실측 저장됨 · 정핏` : "옷장에 넣으면 실측으로 핏을 맞춰 봐요"}
+            </span>
+          </div>
+          <Link href="/closet" className="shrink-0 rounded-[7px] border border-line bg-white px-2 py-1 text-[10px] leading-[1.4] text-plum">
+            {item ? "옷장에서 보기" : "옷장에 넣기"}
+          </Link>
+        </div>
+      ))}
+    </section>
+  );
+}
+
 function Message({ m }: { m: ChatMessage }) {
   if (m.role === "user")
     return (
@@ -149,6 +189,7 @@ function Message({ m }: { m: ChatMessage }) {
     <div className="animate-rise flex w-full flex-col gap-[9.1px]">
       <BotName />
       <p className="text-[12.5px] leading-[1.4] whitespace-pre-line">{m.text}</p>
+      {m.closet?.length ? <ClosetCards samples={m.closet} /> : null}
       {m.products?.length ? <ProductCards ids={m.products} /> : null}
     </div>
   );
