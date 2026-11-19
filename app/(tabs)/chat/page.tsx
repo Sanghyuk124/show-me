@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { TabHeader } from "@/components/ui";
 import { FIRST_CHIPS, getReply } from "@/lib/chat";
 import { shrinkPhoto, videoFrames } from "@/lib/media";
+import { findProduct, type Product } from "@/lib/products";
+import { won } from "@/components/ui";
 import { CART_SEED } from "@/lib/data";
 import { setApp, showToast, useApp, type ChatMessage } from "@/lib/store";
 
@@ -88,6 +90,53 @@ function Attached({ images, video }: { images: string[]; video?: boolean }) {
   );
 }
 
+function addToCart(p: Product) {
+  const id = `product-${p.id}`;
+  let added = false;
+  setApp((s) => {
+    if (s.cart.some((c) => c.id === id)) return {};
+    added = true;
+    return {
+      cart: [...s.cart, { id, name: p.name, option: `${p.colors?.[0] ?? "기본"} / 사이즈 선택 전`, price: p.price, image: p.image, qty: 1, checked: true }],
+    };
+  });
+  showToast(added ? "장바구니에 담았어요." : "이미 장바구니에 있어요.");
+}
+
+/** 쇼핑메이트가 추천한 상품 카드 (상품 목록: lib/products.ts) */
+function ProductCards({ ids }: { ids: string[] }) {
+  const products = ids.map(findProduct).filter((p): p is Product => !!p);
+  if (!products.length) return null;
+  return (
+    <section className="flex flex-col gap-[9.1px] rounded-[12.5px] border-[0.9px] border-line bg-white px-[12.5px] py-[11.25px]">
+      <div className="flex leading-[1.4]">
+        <h2 className="flex-1 text-[13.4px] font-bold">추천 상품</h2>
+        <span className="text-[10px] font-medium text-plum">{products.length}개</span>
+      </div>
+      {products.map((p) => (
+        <div key={p.id} className="flex items-center gap-2.5">
+          <img src={p.image} alt={p.name} className="size-16 shrink-0 rounded-[8.93px] object-cover" />
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5 leading-[1.4]">
+            <span className="truncate text-[10px] text-sub">{p.brand}</span>
+            <span className="line-clamp-2 text-[12px] font-bold">{p.name}</span>
+            <span className="text-[12px] font-bold text-plum">{won(p.price)}</span>
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            <button type="button" onClick={() => addToCart(p)} className="rounded-[7px] border border-line bg-white px-2 py-1 text-[10px] leading-[1.4] text-plum">
+              장바구니 담기
+            </button>
+            {p.link && (
+              <a href={p.link} target="_blank" rel="noopener noreferrer" className="text-[10px] leading-[1.4] text-sub underline underline-offset-2">
+                판매처 보기
+              </a>
+            )}
+          </div>
+        </div>
+      ))}
+    </section>
+  );
+}
+
 function Message({ m }: { m: ChatMessage }) {
   if (m.role === "user")
     return (
@@ -100,6 +149,7 @@ function Message({ m }: { m: ChatMessage }) {
     <div className="animate-rise flex w-full flex-col gap-[9.1px]">
       <BotName />
       <p className="text-[12.5px] leading-[1.4] whitespace-pre-line">{m.text}</p>
+      {m.products?.length ? <ProductCards ids={m.products} /> : null}
     </div>
   );
 }

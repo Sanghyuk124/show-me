@@ -19,6 +19,7 @@ npm run dev
 | --- | --- |
 | 색상·글꼴 | `app/globals.css` 맨 위 |
 | 상품, 브랜드, 세일 일정, 마이페이지 메뉴 | `lib/data.ts` |
+| 쇼핑메이트가 추천하는 상품 목록 | `lib/products.ts` (사진은 `public/images/products/`) |
 | 쇼핑메이트 답변 (Claude 연결·예시 답변) | `lib/chat.ts`, `app/api/chat/route.ts` |
 | 화면별 코드 | `app/` 안의 각 폴더 `page.tsx` |
 | 이미지 | `public/images/` |
