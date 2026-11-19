@@ -47,7 +47,8 @@ export interface AppState {
   body: Measures;
   tryOnLink: string;
   /** 아바타에 입혀 보는 옷 (옷장 옷 id) */
-  wearing: { top?: string; bottom?: string };
+  /** 아바타에 입혀 본 옷 (상의·하의·아우터 한 벌씩) */
+  wearing: { top?: string; bottom?: string; outer?: string };
   /** 판매처 링크 화면에서 저장한 링크·사이즈와, 링크에서 가져온 옷 사진·이름·실측 (옷장 화면에서 등록 창을 열어요) */
   pendingLink: ({ url: string; size: string } & LinkImport) | null;
   followed: string[];

@@ -35,7 +35,8 @@ export default function AvatarPage() {
   const [layout, setLayout] = useState<BodyLayout | null>(null);
   const [reports, setReports] = useState<GarmentReport[]>([]);
   const [colors, setColors] = useState<Record<string, string>>({});
-  const worn = [app.wearing?.top, app.wearing?.bottom]
+  // 겹쳐 입기: 하의 → 상의 → 아우터 순서로 입혀요
+  const worn = [app.wearing?.bottom, app.wearing?.top, app.wearing?.outer]
     .map((id) => app.closet.find((i) => i.id === id))
     .filter((i): i is ClosetItem => !!i);
   const garments = worn
@@ -52,7 +53,7 @@ export default function AvatarPage() {
   }, [wornKey]);
 
   const toggleWear = (item: ClosetItem) => {
-    const kind = item.category === "bottom" ? "bottom" : "top";
+    const kind = item.category === "bottom" ? "bottom" : item.category === "outer" ? "outer" : "top";
     if (app.wearing?.[kind] === item.id) {
       setApp((st) => ({ wearing: { ...st.wearing, [kind]: undefined } }));
       return;
@@ -166,7 +167,7 @@ export default function AvatarPage() {
             {reports.map((r) => (
               <div key={r.name} className="flex flex-col gap-1">
                 <p className="text-[11px] font-bold text-plum">
-                  {r.kind === "top" ? "상의" : "하의"} · {r.name}
+                  {r.kind === "bottom" ? "하의" : r.category === "outer" ? "아우터" : "상의"} · {r.name}
                 </p>
                 <ul className="flex flex-col gap-0.5">
                   {r.lines.map((l) => (
@@ -198,7 +199,7 @@ export default function AvatarPage() {
 
           <div className="grid grid-cols-2 gap-x-[7px] gap-y-[9.4px]">
             {app.closet.map((item) => {
-              const wearing = app.wearing?.top === item.id || app.wearing?.bottom === item.id;
+              const wearing = app.wearing?.top === item.id || app.wearing?.bottom === item.id || app.wearing?.outer === item.id;
               return (
                 <div key={item.id} className="flex min-w-0 flex-col items-center gap-[3.5px]">
                   <button type="button" onClick={() => setOpenId(item.id)} className="flex w-full min-w-0 flex-col items-center gap-[3.5px] text-left">

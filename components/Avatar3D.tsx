@@ -220,11 +220,17 @@ export interface BodyLayout {
   crotchY: number;
   height: number;
   rings: Record<"bust" | "waist" | "hips" | "thigh" | "knee" | "ankle", { y: number; xl: number; xr: number }>;
+  /** 팔: 어깨 끝 → 손목 (cm). 화면 왼쪽 팔(x가 작은 쪽)과 오른쪽 팔 */
+  arms: { left: { x0: number; y0: number; x1: number; y1: number }; right: { x0: number; y0: number; x1: number; y1: number } };
+  /** 화면 크기 (px) */
+  width: number;
+  height_px: number;
 }
 
 export interface GarmentReport {
   name: string;
   kind: GarmentSpec["kind"];
+  category: GarmentSpec["category"];
   lines: FitLine[];
 }
 
@@ -358,7 +364,16 @@ export function Avatar3D({
         return { y: y / idx.length, xl, xr };
       };
       const [a, b] = model.shoulderTips.map((i) => i * 3);
+      // 왼팔(+x) 손목 = 아래팔 줄자 끝, 반대쪽은 좌우를 뒤집어요
+      const wr = model.rulers.lowerarm[1] * 3;
+      const plus = pos[a] > pos[b] ? a : b;
+      const minus = plus === a ? b : a;
+      const armR = { x0: pos[plus], y0: pos[plus + 1], x1: pos[wr], y1: pos[wr + 1] };
+      const armL = { x0: pos[minus], y0: pos[minus + 1], x1: -pos[wr], y1: pos[wr + 1] };
       layoutRef.current({
+        arms: { left: armL, right: armR },
+        width: w,
+        height_px: h,
         sx: (x1 - ox) / 10,
         sy: (oy - y1) / 10,
         ox,
@@ -425,7 +440,7 @@ export function Avatar3D({
         if (spec.kind === "bottom") bottomMesh = gm;
         // 2D 입어보기에서는 핏 설명만 쓰고 3D 옷은 그리지 않아요
         if (flatRef.current) {
-          reports.push({ name: spec.name, kind: spec.kind, lines: gm.report });
+          reports.push({ name: spec.name, kind: spec.kind, category: spec.category, lines: gm.report });
           continue;
         }
         gm.covers.forEach((c, i) => c && (covered[i] = 1));
@@ -448,7 +463,7 @@ export function Avatar3D({
         if (spec.kind === "top" && bottomGeo && bottomMesh && gm.hemY !== undefined) {
           bottomGeo.setIndex(new THREE.BufferAttribute(hiddenAbove(bottomGeo, gm.hemY + 3), 1));
         }
-        reports.push({ name: spec.name, kind: spec.kind, lines: gm.report });
+        reports.push({ name: spec.name, kind: spec.kind, category: spec.category, lines: gm.report });
       }
       // 옷 아래 가려지는 몸은 그리지 않아요 (옷 밖으로 피부가 비치지 않게)
       body.body.setIndex(new THREE.BufferAttribute(visibleIndex(model.index, covered), 1));
