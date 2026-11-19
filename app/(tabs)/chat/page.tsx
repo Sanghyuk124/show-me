@@ -294,7 +294,7 @@ export default function ChatPage() {
           <input
             value={text}
             aria-label="메시지"
-            placeholder="고민이나 상품 링크를 보내주세요"
+            placeholder="고민이나 상품 이미지/상품 상세 치수를 캡처해서 첨부해 주세요"
             onChange={(e) => setText(e.target.value)}
             className="min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-[10px] placeholder:text-sub"
           />
