@@ -33,9 +33,10 @@ export interface AppState {
   concerns: string[];
   concernNote: string;
   stylePicks: number[];
-  /** 취향 찾기에서 지금까지 저장한 사진 번호 (모든 묶음) */
-  tastePicks: number[];
-  /** 취향 찾기에서 지금 보고 있는 묶음 번호 (저장할 때마다 1씩) */
+  /** 취향 찾기에서 지금까지 저장한 사진 이름 (lib/data.ts TASTE_PHOTOS의 id) */
+  tastePicks: string[];
+  /** 취향 찾기 사진을 랜덤으로 섞은 순서와, 지금 보고 있는 묶음 번호 (저장할 때마다 다음 묶음) */
+  tasteOrder: string[];
   tasteRound: number;
   closet: ClosetItem[];
   body: Measures;
@@ -60,6 +61,7 @@ const initialState: AppState = {
   concernNote: "",
   stylePicks: [0],
   tastePicks: [],
+  tasteOrder: [],
   tasteRound: 0,
   closet: CLOSET_SEED,
   body: BODY_SEED,
@@ -84,6 +86,8 @@ function load() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) state = { ...initialState, ...JSON.parse(raw) };
+    // 예전 버전은 취향 사진을 숫자로 기억했어요 → 이름(문자) 방식으로 바뀌어서 비워요
+    if (state.tastePicks.some((x) => typeof x !== "string")) state = { ...state, tastePicks: [], tasteOrder: [], tasteRound: 0 };
   } catch {
     state = initialState;
   }

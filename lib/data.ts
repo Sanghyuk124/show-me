@@ -95,52 +95,75 @@ export const STYLE_PHOTOS: Record<Gender, string[]> = {
 };
 
 /**
- * 취향 찾기 사진 목록. 화면에는 위에서부터 9장씩 한 묶음으로 보여요 (저장하면 다음 9장).
+ * 취향 찾기 사진 목록 (성별마다 따로). 처음엔 랜덤 9장, 저장하면 아직 안 본 나머지 9장이 나와요.
+ * 다 보면 다시 섞어서 처음부터 보여 줘요.
  *
  * 사진을 바꾸거나 더하는 법
- * 1) 사진 파일을 public/images/taste/ 폴더에 넣어요 (세로 사진 4:5 비율이 잘 맞아요)
- * 2) 아래 목록의 file을 그 파일 이름으로 바꾸거나, { file: "...", tag: "..." } 줄을 더해요
- * - tag: 사진의 스타일. '나의 추구미'(많이 고른 스타일 순위)를 계산할 때 써요. 미니멀·캐주얼·스트릿·아메카지 등 자유롭게.
- * - 9의 배수로 맞추면 묶음이 딱 떨어져요. 모자라면 앞 사진부터 다시 채워요.
- * - 목록 순서를 바꾸면 사진 번호(id)도 바뀌어서, 이미 저장된 선택이 다른 사진을 가리킬 수 있어요. 새 사진은 맨 뒤에 더하는 게 좋아요.
+ * 1) 사진 파일을 public/images/taste/female/ (여성) 또는 male/ (남성) 폴더에 넣어요. 세로 전신 사진이 잘 맞아요.
+ * 2) 아래 목록에 { file: "파일이름.jpg", tag: "스타일" } 한 줄씩 넣어요.
+ * - tag: '나의 추구미'(많이 고른 스타일 순위) 계산에 써요.
+ * - 9의 배수(18장 등)로 맞추면 9장씩 딱 나뉘어요.
  */
-const TASTE_LIST: { file: string; tag: string }[] = [
-  { file: "taste-1.jpg", tag: "미니멀" }, // 여성 블레이저
-  { file: "taste-2.jpg", tag: "아메카지" }, // 여성 레이어드
-  { file: "taste-3.jpg", tag: "캐주얼" }, // 남성 스트라이프
-  { file: "taste-4.jpg", tag: "스트릿" }, // 남성 블랙
-  { file: "taste-5.jpg", tag: "미니멀" }, // 여성 가디건
-  { file: "taste-6.jpg", tag: "아메카지" }, // 남성 필드 재킷
-  { file: "taste-7.jpg", tag: "스트릿" }, // 여성 와이드 데님
-  { file: "taste-8.jpg", tag: "캐주얼" }, // 여성 셔츠
-  { file: "taste-9.jpg", tag: "아메카지" }, // 남성 데님 재킷
-  { file: "taste-10.jpg", tag: "미니멀" }, // 남성 그레이 셋업
-  { file: "taste-11.jpg", tag: "캐주얼" }, // 여성 핑크 니트·데님
-  { file: "taste-12.jpg", tag: "스트릿" }, // 남성 블랙 카고
-  { file: "taste-13.jpg", tag: "아메카지" }, // 남성 필드 재킷·카고
-  { file: "taste-14.jpg", tag: "스트릿" }, // 남성 블랙 맨투맨
-  { file: "taste-15.jpg", tag: "미니멀" }, // 남성 버건디 니트
-  { file: "taste-16.jpg", tag: "미니멀" }, // 남성 블랙 재킷
-  { file: "taste-17.jpg", tag: "캐주얼" }, // 남성 그레이 니트·데님
-  { file: "taste-18.jpg", tag: "캐주얼" }, // 남성 네이비 니트
-  { file: "taste-19.jpg", tag: "미니멀" }, // 남성 블랙 니트·와이드
-  { file: "taste-20.jpg", tag: "미니멀" }, // 남성 베이지 셔츠
-  { file: "taste-21.jpg", tag: "아메카지" }, // 남성 패딩 조끼·카고
-  { file: "taste-22.jpg", tag: "스트릿" }, // 남성 트랙 재킷
-  { file: "taste-23.jpg", tag: "캐주얼" }, // 남성 핑크 니트
-];
+const TASTE_LIST: Record<Gender, { file: string; tag: string }[]> = {
+  female: [
+    { file: "f-mori-1.jpg", tag: "모리걸" },
+    { file: "f-mori-2.jpg", tag: "모리걸" },
+    { file: "f-mori-3.jpg", tag: "모리걸" },
+    { file: "f-mori-4.jpg", tag: "모리걸" },
+    { file: "f-minimal-1.jpg", tag: "미니멀" },
+    { file: "f-minimal-2.jpg", tag: "미니멀" },
+    { file: "f-minimal-3.jpg", tag: "미니멀" },
+    { file: "f-bizcasual-1.jpg", tag: "비즈니스 캐주얼" },
+    { file: "f-bizcasual-2.jpg", tag: "비즈니스 캐주얼" },
+    { file: "f-bizcasual-3.jpg", tag: "비즈니스 캐주얼" },
+    { file: "f-street-1.jpg", tag: "스트릿" },
+    { file: "f-street-2.jpg", tag: "스트릿" },
+    { file: "f-street-3.jpg", tag: "스트릿" },
+    { file: "f-street-4.jpg", tag: "스트릿" },
+    { file: "f-casual-1.jpg", tag: "캐주얼" },
+    { file: "f-casual-2.jpg", tag: "캐주얼" },
+    { file: "f-casual-3.jpg", tag: "캐주얼" },
+    { file: "f-casual-4.jpg", tag: "캐주얼" },
+  ],
+  // 남성 사진은 새 사진을 받기 전까지 기존 예시 사진이에요
+  male: [
+    { file: "m-1.jpg", tag: "캐주얼" },
+    { file: "m-2.jpg", tag: "스트릿" },
+    { file: "m-3.jpg", tag: "아메카지" },
+    { file: "m-4.jpg", tag: "아메카지" },
+    { file: "m-5.jpg", tag: "미니멀" },
+    { file: "m-6.jpg", tag: "스트릿" },
+    { file: "m-7.jpg", tag: "아메카지" },
+    { file: "m-8.jpg", tag: "스트릿" },
+    { file: "m-9.jpg", tag: "미니멀" },
+    { file: "m-10.jpg", tag: "미니멀" },
+    { file: "m-11.jpg", tag: "캐주얼" },
+    { file: "m-12.jpg", tag: "캐주얼" },
+    { file: "m-13.jpg", tag: "미니멀" },
+    { file: "m-14.jpg", tag: "미니멀" },
+    { file: "m-15.jpg", tag: "아메카지" },
+    { file: "m-16.jpg", tag: "스트릿" },
+    { file: "m-17.jpg", tag: "캐주얼" },
+  ],
+};
 
-export const TASTE_PHOTOS = TASTE_LIST.map((p, i) => ({ id: i + 1, tag: p.tag, src: `/images/taste/${p.file}` }));
+export interface TastePhoto {
+  /** 사진 이름 (예: "female/f-mori-1") — 저장한 선택은 이 이름으로 기억해요 */
+  id: string;
+  tag: string;
+  src: string;
+}
+
+export const TASTE_PHOTOS: Record<Gender, TastePhoto[]> = {
+  female: TASTE_LIST.female.map((p) => ({ id: `female/${p.file.replace(/\.\w+$/, "")}`, tag: p.tag, src: `/images/taste/female/${p.file}` })),
+  male: TASTE_LIST.male.map((p) => ({ id: `male/${p.file.replace(/\.\w+$/, "")}`, tag: p.tag, src: `/images/taste/male/${p.file}` })),
+};
+
+/** 이름으로 사진 찾기 (성별 상관없이) */
+export const tastePhoto = (id: string) => TASTE_PHOTOS.female.find((p) => p.id === id) ?? TASTE_PHOTOS.male.find((p) => p.id === id);
 
 /** 한 화면에 보이는 사진 수 */
 export const TASTE_SET_SIZE = 9;
-
-/** round번째 묶음의 사진 9장 (목록 끝에 닿으면 처음부터 이어서) */
-export function tasteSet(round: number) {
-  const n = TASTE_PHOTOS.length;
-  const start = (round * TASTE_SET_SIZE) % n;
-  return Array.from({ length: Math.min(TASTE_SET_SIZE, n) }, (_, k) => TASTE_PHOTOS[(start + k) % n]);
-}
 
 /**
  * 처음부터 옷장에 들어 있는 옷 (예시 데이터). 의상 데이터를 추가할 때는 아래 형식대로 한 벌씩 넣으세요.
