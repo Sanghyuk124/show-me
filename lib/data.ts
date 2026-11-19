@@ -31,6 +31,8 @@ export interface ClosetItem {
   size?: string;
   /** true면 image가 배경을 지운(누끼) 투명 사진이에요 */
   cutout?: boolean;
+  /** 앱 안 '사진 보관함'의 예시 사진으로 등록했으면 그 사진 이름 (SAMPLE_PHOTOS의 id) */
+  sample?: string;
   /**
    * 아바타에 입힐 옷 모양 (없으면 이름·카테고리·소매 길이로 자동으로 골라요)
    * tee: 티셔츠·니트 / shirt: 셔츠·블라우스 / jacket: 재킷·아우터 / pants: 긴바지 / skirt: 스커트 / shorts: 반바지
@@ -87,6 +89,22 @@ export const CONCERNS = [
   { id: "style", title: "스타일 찾기", desc: "유행보다 나에게 어울리는 방향을 찾아요." },
   { id: "etc", title: "기타", desc: "어떤 고민이든 편하게 이야기해요." },
 ];
+
+/**
+ * 나의 옷장 '+ 사진 첨부하기'를 누르면 뜨는 앱 안 '사진 보관함'의 예시 사진 (성별마다 따로).
+ * 사진을 누르면 배경을 지워(누끼) 아래 이름·종류로 옷장에 바로 들어가요.
+ * 사진 파일: public/demo-photos/ · 더하려면 같은 형식으로 한 줄 넣으면 돼요.
+ */
+export const SAMPLE_PHOTOS: Record<Gender, { id: string; name: string; category: Category; src: string }[]> = {
+  female: [
+    { id: "women-cardigan", name: "아이보리 가디건", category: "outer", src: "/demo-photos/women-cardigan.jpg" },
+    { id: "women-denim", name: "블루 스트레이트 데님", category: "bottom", src: "/demo-photos/women-denim.jpg" },
+  ],
+  male: [
+    { id: "men-knit", name: "네이비 UCLA 니트", category: "top", src: "/demo-photos/men-knit.jpg" },
+    { id: "men-denim", name: "블랙 벌룬 데님", category: "bottom", src: "/demo-photos/men-denim.jpg" },
+  ],
+};
 
 /** 온보딩 '좋아하는 스타일'(4번째 화면)에 보이는 사진 수. 취향 찾기 사진(아래 TASTE_PHOTOS)에서 성별별로 랜덤으로 골라요. */
 export const STYLE_PICK_COUNT = 12;
