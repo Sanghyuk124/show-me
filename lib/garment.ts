@@ -688,13 +688,15 @@ export async function garmentColor(name: string, image?: string): Promise<string
     // 가운데 부분만 (배경을 피해서)
     ctx.drawImage(img, img.width * 0.3, img.height * 0.3, img.width * 0.4, img.height * 0.4, 0, 0, 24, 24);
     const d = ctx.getImageData(0, 0, 24, 24).data;
-    let r = 0, gg = 0, b = 0;
+    let r = 0, gg = 0, b = 0, k = 0;
     for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] < 128) continue; // 배경을 지운(투명한) 칸은 빼요
       r += d[i];
       gg += d[i + 1];
       b += d[i + 2];
+      k++;
     }
-    const k = d.length / 4;
+    if (!k) return "#8a8580";
     const hex = (v: number) => Math.round(v / k).toString(16).padStart(2, "0");
     return `#${hex(r)}${hex(gg)}${hex(b)}`;
   } catch {

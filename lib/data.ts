@@ -29,6 +29,8 @@ export interface ClosetItem {
   measures: Measures;
   link?: string;
   size?: string;
+  /** true면 image가 배경을 지운(누끼) 투명 사진이에요 */
+  cutout?: boolean;
   /**
    * 아바타에 입힐 옷 모양 (없으면 이름·카테고리·소매 길이로 자동으로 골라요)
    * tee: 티셔츠·니트 / shirt: 셔츠·블라우스 / jacket: 재킷·아우터 / pants: 긴바지 / skirt: 스커트 / shorts: 반바지

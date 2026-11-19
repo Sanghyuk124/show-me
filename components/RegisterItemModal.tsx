@@ -17,7 +17,12 @@ const OPTIONS: { id: Category; label: string }[] = [
 ];
 
 export interface NewItemSource {
+  /** 옷장에 저장할 사진 (사진 첨부면 배경을 지운 사진) */
   image?: string;
+  /** AI 분류에 보낼 원래 사진 (JPEG) */
+  aiImage?: string;
+  /** image가 배경을 지운 사진인지 */
+  cutout?: boolean;
   link?: string;
   size?: string;
 }
@@ -52,7 +57,7 @@ export function RegisterItemModal({
   // 창이 열리면 사진(또는 링크)으로 바로 분류를 시도해요.
   useEffect(() => {
     const id = ++run.current;
-    classifyItem({ image: source.image, link: source.link }).then((r) => apply(id, r));
+    classifyItem({ image: source.aiImage ?? source.image, link: source.link }).then((r) => apply(id, r));
     return () => clearTimeout(timer.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -67,7 +72,7 @@ export function RegisterItemModal({
     timer.current = setTimeout(() => {
       const id = ++run.current;
       setBusy(true);
-      classifyItem({ name: value.trim(), link: source.link, image: source.image }).then((r) => apply(id, r));
+      classifyItem({ name: value.trim(), link: source.link, image: source.aiImage ?? source.image }).then((r) => apply(id, r));
     }, 700);
   };
 
@@ -79,6 +84,7 @@ export function RegisterItemModal({
       category,
       source: source.link ? "link" : "photo",
       image: source.image,
+      cutout: source.cutout,
       link: source.link,
       size: source.size,
       favorite: false,
@@ -103,7 +109,7 @@ export function RegisterItemModal({
     <Modal title="내 옷 등록" onClose={onClose} align="center">
       <div className="flex h-32 items-center justify-center overflow-hidden rounded-[10px] bg-sand">
         {source.image ? (
-          <img src={source.image} alt="등록할 옷" className="h-full w-full object-cover" />
+          <img src={source.image} alt="등록할 옷" className={cn("h-full w-full", source.cutout ? "object-contain p-2" : "object-cover")} />
         ) : (
           <div className="px-4 text-center text-sub">
             <Link2 className="mx-auto size-5" strokeWidth={1.5} />

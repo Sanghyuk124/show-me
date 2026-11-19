@@ -7,6 +7,7 @@ import { itemStatus, MeasureModal } from "@/components/MeasureModal";
 import { RegisterItemModal, type NewItemSource } from "@/components/RegisterItemModal";
 import { cn, Modal, TabHeader } from "@/components/ui";
 import type { ClosetItem } from "@/lib/data";
+import { removeBackground } from "@/lib/cutout";
 import { shrinkPhoto } from "@/lib/media";
 import { setApp, showToast, updateItem, useApp } from "@/lib/store";
 
@@ -86,10 +87,11 @@ export default function ClosetPage() {
   const [openId, setOpenId] = useState<string | null>(null);
   // 즐겨찾는 상의·하의가 아직 없을 때, 고를 옷 목록을 보여주는 창
   const [choosing, setChoosing] = useState<"top" | "bottom" | null>(null);
-  const [photo, setPhoto] = useState<string | null>(null);
+  const [photo, setPhoto] = useState<{ original: string; cutout: string; ok: boolean } | null>(null);
+  const [cutting, setCutting] = useState(false);
   // 판매처 링크 화면에서 저장하고 돌아오면 이름·종류를 묻는 창이 열립니다.
   const source: NewItemSource | null = photo
-    ? { image: photo }
+    ? { image: photo.cutout, aiImage: photo.original, cutout: photo.ok }
     : app.pendingLink
       ? { link: app.pendingLink.url, size: app.pendingLink.size }
       : null;
@@ -120,12 +122,19 @@ export default function ClosetPage() {
   // Figma 남성 화면(06 · 남성)은 '사진 촬영하기'(카메라), 여성 화면은 '사진 첨부하기'예요.
   const male = app.profile.gender === "male";
 
+  // 사진을 고르면: 작게 줄이고 → 배경을 지워(누끼) → 이름·종류를 확인하고 옷장에 넣어요
   const onPhoto = async (file?: File) => {
     if (!file) return;
+    setCutting(true);
     try {
-      setPhoto(await shrinkPhoto(file));
+      const original = await shrinkPhoto(file);
+      const cut = await removeBackground(original).catch(() => ({ image: original, ok: false }));
+      if (!cut.ok) showToast("배경이 복잡해 누끼를 따지 못했어요. 원래 사진으로 넣을게요.");
+      setPhoto({ original, cutout: cut.image, ok: cut.ok });
     } catch {
       showToast("사진을 불러오지 못했어요. 다른 사진으로 시도해 주세요.");
+    } finally {
+      setCutting(false);
     }
   };
 
@@ -139,9 +148,10 @@ export default function ClosetPage() {
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
+              disabled={cutting}
               className="flex-1 rounded-[4.62px] bg-white px-[6.9px] py-[5px] text-center text-[10px] leading-[1.4] font-medium whitespace-pre text-plum"
             >
-              {male ? "＋  사진 촬영하기" : "＋  사진 첨부하기"}
+              {cutting ? "누끼 따는 중…" : male ? "＋  사진 촬영하기" : "＋  사진 첨부하기"}
             </button>
             <Link
               href="/closet/link"
@@ -154,7 +164,6 @@ export default function ClosetPage() {
             ref={fileRef}
             type="file"
             accept="image/*"
-            capture={male ? "environment" : undefined}
             hidden
             onChange={(e) => {
               onPhoto(e.target.files?.[0]);
