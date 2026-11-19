@@ -5,7 +5,13 @@ import { useRouter } from "next/navigation";
 import { LinkField, LinkScreen } from "@/components/LinkField";
 import { cn, digits } from "@/components/ui";
 import { importFromLink } from "@/lib/linkImport";
-import { setApp, showToast } from "@/lib/store";
+import { setApp, showToast, useApp } from "@/lib/store";
+
+/** 체험용 판매처 링크 (lib/data.ts LINK_PRESETS) — 성별마다 2개 */
+const TRY_LINKS = {
+  female: ["example.com/showme/women-cardigan", "example.com/showme/women-denim"],
+  male: ["example.com/showme/men-knit", "example.com/showme/men-denim"],
+};
 
 const TOP_ROW = ["XS", "S", "M", "L"];
 const SECOND_ROW = ["XL", "XXL", "XXXL"];
@@ -18,6 +24,13 @@ export default function ClosetLinkPage() {
   const [numeric, setNumeric] = useState(false);
   const [numberSize, setNumberSize] = useState("");
   const [busy, setBusy] = useState(false);
+  const { profile } = useApp();
+  // 체험용 링크를 누르면 입력란에 넣고, 클립보드에도 복사해요
+  const tryLink = (url: string) => {
+    setLink(url);
+    navigator.clipboard?.writeText(url).catch(() => {});
+    showToast("체험용 링크를 넣었어요. 사이즈를 고르고 저장해 보세요.");
+  };
   const chosen = numeric ? numberSize : size;
 
   const SizeButton = ({ value }: { value: string }) => {
@@ -68,6 +81,14 @@ export default function ClosetLinkPage() {
       onSave={save}
     >
       <LinkField label="판매처 상품 링크" value={link} onChange={setLink} />
+      <div className="-mt-2.5 flex flex-col gap-1 px-1 text-[10px] leading-[1.5] text-sub">
+        <p>체험해 보기 · 눌러서 넣거나 길게 눌러 복사하세요</p>
+        {TRY_LINKS[profile.gender].map((url) => (
+          <button key={url} type="button" onClick={() => tryLink(url)} className="self-start font-mono text-[10.5px] break-all text-plum underline underline-offset-2 select-all">
+            {url}
+          </button>
+        ))}
+      </div>
 
       <section className="flex flex-col gap-2 rounded-xl border border-line bg-white p-3.5">
         <div className="flex h-5 items-start font-bold">

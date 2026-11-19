@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ProductDetailModal } from "@/components/MeasureModal";
 import { useRouter } from "next/navigation";
 import { TabHeader } from "@/components/ui";
-import { FIRST_CHIPS, getReply } from "@/lib/chat";
+import { FIRST_CHIPS, getReply, START_CHIPS } from "@/lib/chat";
 import { shrinkPhoto, videoFrames } from "@/lib/media";
 import { findProduct, type Product } from "@/lib/products";
 import { won } from "@/components/ui";
@@ -208,7 +208,8 @@ export default function ChatPage() {
   const detailItem = app.closet.find((i) => i.id === detailId);
   const listRef = useRef<HTMLElement>(null);
   const last = app.chat.at(-1);
-  const chips = typing ? [] : last ? (last.chips ?? []) : FIRST_CHIPS;
+  // 첫 화면 칩: 성별별 추천 질문 + 예시 상담에 이어 답하는 칩
+  const chips = typing ? [] : last ? (last.chips ?? []) : [...START_CHIPS[app.profile.gender], ...FIRST_CHIPS];
 
   // 새 메시지가 오면 맨 아래로 내려갑니다.
   useEffect(() => {
@@ -335,7 +336,7 @@ export default function ChatPage() {
           <input
             value={text}
             aria-label="메시지"
-            placeholder="고민이나 상품 이미지/상품 상세 치수를 캡처해서 첨부해 주세요"
+            placeholder="내일 데이트 가야 하는데 데이트 룩 추천해줘"
             onChange={(e) => setText(e.target.value)}
             className="min-w-0 flex-1 bg-transparent text-[12px] outline-none placeholder:text-[10px] placeholder:text-sub"
           />
