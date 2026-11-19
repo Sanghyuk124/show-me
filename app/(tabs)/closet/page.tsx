@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ClosetThumb } from "@/components/ClosetThumb";
 import { itemStatus, MeasureModal } from "@/components/MeasureModal";
 import { RegisterItemModal, type NewItemSource } from "@/components/RegisterItemModal";
-import { cn, TabHeader } from "@/components/ui";
+import { cn, Modal, TabHeader } from "@/components/ui";
 import type { ClosetItem } from "@/lib/data";
 import { setApp, showToast, updateItem, useApp } from "@/lib/store";
 
@@ -42,8 +42,60 @@ function Criterion({ label, item }: { label: string; item?: ClosetItem }) {
   return (
     <div className={cn("flex flex-1 flex-col gap-[1.4px] rounded-[5.78px] px-[6.9px] py-[5px] leading-[1.4]", label === "상의" ? "bg-sand" : "bg-lav")}>
       <p className="text-[12px] font-bold">{label}</p>
-      <p className="text-[10px] text-sub">{!item ? `즐겨찾는 ${label} 없음` : item.confirmed ? "실측 저장 완료" : "실측 확인 필요"}</p>
+      <p className="text-[10px] text-sub">{!item ? `눌러서 즐겨찾는 ${label} 고르기` : item.confirmed ? "실측 저장 완료" : "실측 확인 필요"}</p>
     </div>
+  );
+}
+
+const TYPE_MATCH = {
+  top: (i: ClosetItem) => i.category === "top" || i.category === "outer",
+  bottom: (i: ClosetItem) => i.category === "bottom",
+};
+
+/** 즐겨찾는 기준 옷이 없을 때: 옷장에서 한 벌을 골라 즐겨찾기로 정하고 바로 실측을 입력해요. */
+function FavoritePicker({
+  type,
+  items,
+  onClose,
+  onPick,
+}: {
+  type: "top" | "bottom";
+  items: ClosetItem[];
+  onClose: () => void;
+  onPick: (item: ClosetItem) => void;
+}) {
+  const label = type === "top" ? "상의" : "하의";
+  return (
+    <Modal title={`즐겨찾는 ${label} 고르기`} onClose={onClose} align="center">
+      <p className="text-[12px] leading-[1.5] text-sub">
+        자주 입고 잘 맞는 {label}를 한 벌 골라 주세요.
+        <br />
+        고르면 바로 실측을 입력할 수 있어요.
+      </p>
+      {items.length ? (
+        <ul className="flex flex-col gap-2">
+          {items.map((item) => (
+            <li key={item.id}>
+              <button
+                type="button"
+                onClick={() => onPick(item)}
+                className="flex w-full items-center gap-3 rounded-[10px] border border-line bg-white p-2.5 text-left active:bg-lav"
+              >
+                <ClosetThumb item={item} className="size-12 shrink-0 rounded-[7px]" />
+                <span className="flex min-w-0 flex-1 flex-col leading-[1.4]">
+                  <span className="truncate text-[13px] font-medium">{item.name}</span>
+                  <span className="truncate text-[10px] text-sub">{itemStatus(item)}</span>
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="rounded-[10px] bg-lav p-3 text-[12px] leading-[1.5] text-plum">
+          아직 옷장에 {label}가 없어요. 먼저 사진 첨부나 판매처 링크로 {label}를 등록해 주세요.
+        </p>
+      )}
+    </Modal>
   );
 }
 
@@ -53,6 +105,8 @@ export default function ClosetPage() {
   const [filter, setFilter] = useState("all");
   const [oldestFirst, setOldestFirst] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
+  // 즐겨찾는 상의·하의가 아직 없을 때, 고를 옷 목록을 보여주는 창
+  const [choosing, setChoosing] = useState<"top" | "bottom" | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
   // 판매처 링크 화면에서 저장하고 돌아오면 이름·종류를 묻는 창이 열립니다.
   const source: NewItemSource | null = photo
@@ -78,7 +132,9 @@ export default function ClosetPage() {
   const visible = useMemo(() => {
     const match = FILTERS.find((f) => f.id === filter)!.match;
     const list = app.closet.filter(match);
-    return oldestFirst ? [...list].reverse() : list;
+    const ordered = oldestFirst ? [...list].reverse() : list;
+    // 즐겨찾기한 옷은 각 탭에서 맨 위에 보여요 (그 안에서는 등록 순서 유지).
+    return [...ordered.filter((i) => i.favorite), ...ordered.filter((i) => !i.favorite)];
   }, [app.closet, filter, oldestFirst]);
 
   const openItem = app.closet.find((i) => i.id === openId);
@@ -156,7 +212,13 @@ export default function ClosetPage() {
                 { label: "상의", item: top },
                 { label: "하의", item: bottom },
               ].map(({ label, item }) => (
-                <button key={label} type="button" disabled={!item} onClick={() => item && setOpenId(item.id)} className="flex flex-1 text-left">
+                <button
+                  key={label}
+                  type="button"
+                  aria-label={item ? `즐겨찾는 ${label} ${item.name} 실측 입력` : `즐겨찾는 ${label} 고르기`}
+                  onClick={() => (item ? setOpenId(item.id) : setChoosing(label === "상의" ? "top" : "bottom"))}
+                  className="flex flex-1 text-left"
+                >
                   <Criterion label={label} item={item} />
                 </button>
               ))}
@@ -220,6 +282,18 @@ export default function ClosetPage() {
         </div>
       </main>
 
+      {choosing && (
+        <FavoritePicker
+          type={choosing}
+          items={app.closet.filter(TYPE_MATCH[choosing])}
+          onClose={() => setChoosing(null)}
+          onPick={(item) => {
+            updateItem(item.id, { favorite: true });
+            setChoosing(null);
+            setOpenId(item.id);
+          }}
+        />
+      )}
       {openItem && <MeasureModal key={openItem.id} item={openItem} onClose={() => setOpenId(null)} />}
       {source && (
         <RegisterItemModal
