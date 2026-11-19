@@ -321,6 +321,21 @@ export const CLOSET_SEED: ClosetItem[] = [
       measures: g.measures,
     };
   }),
+  // 남성 옷장 사진만 (실측은 직접 입력)
+  ...(
+    [
+      { id: "demo-m-sweatpants", name: "그레이 스웨트 팬츠", category: "bottom", image: "/demo-garments/m-sweatpants-photo.webp" },
+      { id: "demo-m-cardigan", name: "브라운 집업 니트 가디건", category: "outer", image: "/demo-garments/m-cardigan-photo.webp" },
+    ] as const
+  ).map((c) => ({
+    ...c,
+    source: "photo" as const,
+    cutout: true,
+    gender: "male" as const,
+    favorite: false,
+    confirmed: false,
+    measures: {},
+  })),
 ];
 
 /**
