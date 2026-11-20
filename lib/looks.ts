@@ -28,10 +28,9 @@ export const LOOK_SETS: LookSet[] = [
   },
   {
     // 남성 (블랙 그래픽 롱슬리브 · 핑크 워싱 데님 — 처음부터 옷장에 있는 옷 / 블랙 바시티 재킷 — 사진 보관함)
-    // 아직 없는 조합(상의+아우터, 하의+아우터, 전체)은 가장 비슷한 사진 + '준비 중' 안내
     gender: "male",
     parts: { top: "m-tee", bottom: "m-pants", outer: "men-jacket" },
-    photos: keys("male", ["base", "top", "bottom", "outer", "top+bottom"]),
+    photos: keys("male", ["base", "top", "bottom", "outer", "top+bottom", "top+outer", "bottom+outer", "top+bottom+outer"]),
   },
 ];
 
