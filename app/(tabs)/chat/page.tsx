@@ -10,7 +10,7 @@ import { findProduct, type Product } from "@/lib/products";
 import { won } from "@/components/ui";
 import Link from "next/link";
 import { ClosetThumb } from "@/components/ClosetThumb";
-import { CART_SEED, SAMPLE_PHOTOS } from "@/lib/data";
+import { CART_SEED, SAMPLE_PHOTOS, type ClosetItem } from "@/lib/data";
 import { myCloset, setApp, showToast, useApp, type ChatMessage } from "@/lib/store";
 
 // 첫 화면 예시 상담(데이트 룩)에 보이는 옷장 옷 3벌 — 성별마다 달라요 (lib/chat.ts FIRST_EXCHANGE 와 같은 내용)
@@ -121,8 +121,37 @@ function addToCart(p: Product) {
   showToast(added ? "장바구니에 담았어요." : "이미 장바구니에 있어요.");
 }
 
+/** 추천 상품을 옷장에 넣어요: 사진·판매처 링크와, 사이즈표의 실측(여성은 S, 남성은 M 기준 · 원사이즈면 그대로) */
+function addToCloset(p: Product, gender: "female" | "male") {
+  const id = `product-${p.id}`;
+  const sizes = Object.keys(p.sizes ?? {});
+  const size = sizes.find((s) => s === (gender === "female" ? "S" : "M")) ?? sizes.find((s) => s === "M") ?? sizes[0];
+  let added = false;
+  setApp((s) => {
+    if (s.closet.some((c) => c.id === id)) return {};
+    added = true;
+    const item: ClosetItem = {
+      id,
+      name: `${p.brand} ${p.name}`,
+      category: p.category,
+      source: "link",
+      link: p.link,
+      image: p.image,
+      product: p.id,
+      gender,
+      favorite: false,
+      confirmed: !!size,
+      size,
+      measures: size ? { ...p.sizes![size] } : {},
+    };
+    return { closet: [item, ...s.closet] };
+  });
+  showToast(added ? "옷장에 넣었어요. 아바타에서 입어 볼 수 있어요." : "이미 옷장에 있어요.");
+}
+
 /** 쇼핑메이트가 추천한 상품 카드 (상품 목록: lib/products.ts) */
 function ProductCards({ ids }: { ids: string[] }) {
+  const { profile, closet } = useApp();
   const products = ids.map(findProduct).filter((p): p is Product => !!p);
   if (!products.length) return null;
   return (
@@ -143,6 +172,19 @@ function ProductCards({ ids }: { ids: string[] }) {
             <button type="button" onClick={() => addToCart(p)} className="rounded-[7px] border border-line bg-white px-2 py-1 text-[10px] leading-[1.4] text-plum">
               장바구니 담기
             </button>
+            {(() => {
+              const inCloset = closet.some((c) => c.id === `product-${p.id}`);
+              return (
+                <button
+                  type="button"
+                  disabled={inCloset}
+                  onClick={() => addToCloset(p, profile.gender)}
+                  className="rounded-[7px] border border-plum bg-plum px-2 py-1 text-[10px] leading-[1.4] text-white disabled:border-line disabled:bg-white disabled:text-sub"
+                >
+                  {inCloset ? "옷장에 있음" : "옷장에 넣기"}
+                </button>
+              );
+            })()}
             {p.link && (
               <a href={p.link} target="_blank" rel="noopener noreferrer" className="text-[10px] leading-[1.4] text-sub underline underline-offset-2">
                 판매처 보기

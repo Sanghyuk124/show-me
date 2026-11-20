@@ -35,6 +35,8 @@ export interface ClosetItem {
   cutout?: boolean;
   /** 앱 안 '사진 보관함'의 예시 사진으로 등록했으면 그 사진 이름 (SAMPLE_PHOTOS의 id) */
   sample?: string;
+  /** 채팅 추천 상품을 '옷장에 넣기'로 넣었으면 그 상품 id (lib/products.ts) */
+  product?: string;
   /** 시연용 옷이면 그 이름 (lib/demoGarments.ts) → 2D 입어보기에서 기준점에 맞춰 펴 입혀요 */
   demo?: string;
   /** 이 성별 사용자에게만 보여요 (예시 옷). 비어 있으면 모두에게 */
