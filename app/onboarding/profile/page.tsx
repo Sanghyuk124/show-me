@@ -25,6 +25,12 @@ function Chip({ on, onClick, className, children }: { on: boolean; onClick: () =
 
 const Label = ({ children }: { children: string }) => <span className="block text-[11px] leading-[1.4] font-medium">{children}</span>;
 
+/** 시연 편의: 성별을 바꾸면 그 성별의 시연용 기본값으로 채워요 (직접 고칠 수 있어요) */
+const GENDER_PRESET: Record<Gender, Partial<Profile>> = {
+  female: { height: "163", weight: "46", personalColor: "unknown" },
+  male: { height: "177", weight: "58", personalColor: "unknown" },
+};
+
 /** Figma 02 · 나의 기본 정보 */
 export default function ProfileStep() {
   const { profile } = useApp();
@@ -54,7 +60,7 @@ export default function ProfileStep() {
           <Label>성별</Label>
           <div className="flex gap-1.5">
             {(Object.keys(GENDER_LABEL) as Gender[]).map((g) => (
-              <Chip key={g} on={profile.gender === g} onClick={() => patch({ gender: g })} className="flex-1 px-[9px]">
+              <Chip key={g} on={profile.gender === g} onClick={() => profile.gender !== g && patch({ gender: g, ...GENDER_PRESET[g] })} className="flex-1 px-[9px]">
                 {GENDER_LABEL[g]}
               </Chip>
             ))}
