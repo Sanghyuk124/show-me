@@ -63,7 +63,7 @@ export default function MyPage() {
           </dl>
         </section>
 
-        {MY_PAGE_SECTIONS.map((section, i) => (
+        {MY_PAGE_SECTIONS.filter((section) => !["고객 지원", "설정 및 관리"].includes(section.title)).map((section, i) => (
           <section key={section.title} className={cn("flex flex-col gap-2.5", i === 1 && "pt-1.5")}>
             <h2 className="text-[14px] leading-[21px] font-bold">{section.title}</h2>
             <div className="flex flex-col divide-y divide-line overflow-hidden rounded-[10px] border border-line bg-white">
@@ -93,13 +93,11 @@ export default function MyPage() {
           </section>
         ))}
 
-        <footer className="flex flex-col gap-1 text-center text-sub">
-          <p className="text-[11px] leading-[18px] font-bold">Show Me</p>
-          <p className="text-[10px] leading-[17px]">나다움을 찾는 여정</p>
+        <div className="flex flex-col items-center">
           {/* 시연용: 모든 기록을 지우고 첫 화면(시작 → 온보딩 3단계)부터 다시 보기 */}
           <button
             type="button"
-            className="mx-auto mt-4 rounded-lg border border-plum bg-white px-4 py-2 text-[11px] font-bold text-plum"
+            className="rounded-lg border border-plum bg-white px-4 py-2 text-[11px] font-bold text-plum"
             onClick={() => {
               if (window.confirm("모든 기록을 지우고 첫 화면부터 다시 시작할까요?")) {
                 resetApp();
@@ -121,6 +119,11 @@ export default function MyPage() {
           >
             데모 데이터 초기화
           </button>
+        </div>
+
+        <footer className="flex flex-col gap-1 text-center text-sub">
+          <p className="text-[11px] leading-[18px] font-bold">Show Me</p>
+          <p className="text-[10px] leading-[17px]">나다움을 찾는 여정</p>
         </footer>
       </main>
       {editing && <ProfileEditModal onClose={() => setEditing(false)} />}
