@@ -154,6 +154,9 @@ export function myCloset(app: Pick<AppState, "closet" | "profile">) {
   return app.closet.filter((i) => !i.gender || i.gender === app.profile.gender);
 }
 
+/** 내가 고른 취향 사진 전부: 온보딩 '좋아하는 스타일' + 취향 찾기 (같은 사진은 한 번만) */
+export const allTastePicks = (app: Pick<AppState, "stylePicks" | "tastePicks">) => [...new Set([...(app.stylePicks ?? []), ...(app.tastePicks ?? [])])];
+
 /** 같은 상품 링크인지 비교하려고 주소를 다듬어요 (http/https, www, 끝의 / 차이는 무시) */
 export const sameLinkKey = (url: string) =>
   url

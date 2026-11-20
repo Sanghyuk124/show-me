@@ -2,7 +2,7 @@
 // - 서버에 Claude API 키(ANTHROPIC_API_KEY)가 있으면 app/api/chat/route.ts 를 통해 Claude가 답해요.
 // - 키가 없으면 아래 cannedReply 의 '미리 써둔 예시 답변'으로 대신 답해요.
 
-import { myCloset, type AppState } from "./store";
+import { allTastePicks, myCloset, type AppState } from "./store";
 import { guessCategory } from "./classify";
 import { closetPicksFor, CONCERNS, PERSONAL_COLORS, tastePhoto, type ClosetItem, type Measures, type Profile } from "./data";
 import { DATE_LOOK_MALE, FIRST_WORK_FEMALE, isFirstWork, PRODUCTS } from "./products";
@@ -75,7 +75,7 @@ const FIRST_EXCHANGE: Record<Profile["gender"], ChatTurn[]> = {
 
 function buildContext(app: AppState): ChatContext {
   const count = new Map<string, number>();
-  app.tastePicks.map(tastePhoto).forEach((p) => p && count.set(p.tag, (count.get(p.tag) ?? 0) + 1));
+  allTastePicks(app).map(tastePhoto).forEach((p) => p && count.set(p.tag, (count.get(p.tag) ?? 0) + 1));
   const taste = [...count.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([t]) => t).join(" · ");
   return {
     profile: app.profile,
