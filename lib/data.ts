@@ -338,7 +338,7 @@ export const CLOSET_SEED: ClosetItem[] = [
     source: "link",
     link: "https://dunststudio.com/product/detail.html?product_no=9857&cate_no=759&display_group=1",
     image: "/images/closet/women/dunst-harrington-blouson.jpg",
-    gender: "female",
+    gender: "male", // 남성 옷 (id 는 예전 이름 그대로 — 저장된 옷장도 다음 접속 때 남성 옷장으로 옮겨져요)
     favorite: false,
     confirmed: true,
     size: "S",
