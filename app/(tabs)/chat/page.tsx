@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ProductDetailModal } from "@/components/MeasureModal";
+import { ProductInfoModal } from "@/components/ProductInfoModal";
 import { useRouter } from "next/navigation";
 import { TabHeader } from "@/components/ui";
 import { FIRST_CHIPS, FIRST_QUESTION, getReply, START_CHIPS } from "@/lib/chat";
@@ -108,31 +109,37 @@ function Attached({ images, video }: { images: string[]; video?: boolean }) {
   );
 }
 
-function addToCart(p: Product) {
+/** 여성은 S, 남성은 M 기준 (원사이즈면 그대로) */
+function defaultSize(p: Product, gender: "female" | "male") {
+  const sizes = Object.keys(p.sizes ?? {});
+  return sizes.find((s) => s === (gender === "female" ? "S" : "M")) ?? sizes.find((s) => s === "M") ?? sizes[0];
+}
+
+function addToCart(p: Product, gender: "female" | "male") {
   const id = `product-${p.id}`;
+  const size = defaultSize(p, gender);
   let added = false;
   setApp((s) => {
     if (s.cart.some((c) => c.id === id)) return {};
     added = true;
     return {
-      cart: [...s.cart, { id, name: p.name, option: `${p.colors?.[0] ?? "기본"} / 사이즈 선택 전`, price: p.price, image: p.image, qty: 1, checked: true }],
+      cart: [...s.cart, { id, name: `${p.brand} ${p.label ?? p.name}`, option: `${p.colors?.[0] ?? "기본"} / ${size === "ONE" ? "원사이즈" : (size ?? "사이즈 선택 전")}`, price: p.price, image: p.image, qty: 1, checked: true }],
     };
   });
   showToast(added ? "장바구니에 담았어요." : "이미 장바구니에 있어요.");
 }
 
-/** 추천 상품을 옷장에 넣어요: 사진·판매처 링크와, 사이즈표의 실측(여성은 S, 남성은 M 기준 · 원사이즈면 그대로) */
-function addToCloset(p: Product, gender: "female" | "male") {
+/** 추천 상품을 옷장에 넣어요: 사진과 사이즈표의 실측(여성은 S, 남성은 M 기준 · 원사이즈면 그대로). quiet 면 안내를 띄우지 않아요 */
+function addToCloset(p: Product, gender: "female" | "male", quiet = false) {
   const id = `product-${p.id}`;
-  const sizes = Object.keys(p.sizes ?? {});
-  const size = sizes.find((s) => s === (gender === "female" ? "S" : "M")) ?? sizes.find((s) => s === "M") ?? sizes[0];
+  const size = defaultSize(p, gender);
   let added = false;
   setApp((s) => {
     if (s.closet.some((c) => c.id === id)) return {};
     added = true;
     const item: ClosetItem = {
       id,
-      name: `${p.brand} ${p.name}`,
+      name: `${p.brand} ${p.label ?? p.name}`,
       category: p.category,
       source: "link",
       link: p.link,
@@ -146,11 +153,11 @@ function addToCloset(p: Product, gender: "female" | "male") {
     };
     return { closet: [item, ...s.closet] };
   });
-  showToast(added ? "옷장에 넣었어요. 아바타에서 입어 볼 수 있어요." : "이미 옷장에 있어요.");
+  if (!quiet) showToast(added ? "옷장에 넣었어요. 아바타에서 입어 볼 수 있어요." : "이미 옷장에 있어요.");
 }
 
 /** 쇼핑메이트가 추천한 상품 카드 (상품 목록: lib/products.ts) */
-function ProductCards({ ids }: { ids: string[] }) {
+function ProductCards({ ids, onOpen }: { ids: string[]; onOpen: (id: string) => void }) {
   const { profile, closet } = useApp();
   const products = ids.map(findProduct).filter((p): p is Product => !!p);
   if (!products.length) return null;
@@ -162,14 +169,17 @@ function ProductCards({ ids }: { ids: string[] }) {
       </div>
       {products.map((p) => (
         <div key={p.id} className="flex items-center gap-2.5">
-          <img src={p.image} alt={p.name} className="size-16 shrink-0 rounded-[8.93px] object-cover" />
-          <div className="flex min-w-0 flex-1 flex-col gap-0.5 leading-[1.4]">
-            <span className="truncate text-[10px] text-sub">{p.brand}</span>
-            <span className="line-clamp-2 text-[12px] font-bold">{p.name}</span>
-            <span className="text-[12px] font-bold text-plum">{won(p.price)}</span>
-          </div>
+          <button type="button" onClick={() => onOpen(p.id)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left" aria-label={`${p.label ?? p.name} 상세 보기`}>
+            <img src={p.image} alt="" className="size-16 shrink-0 rounded-[8.93px] object-cover" />
+            <span className="flex min-w-0 flex-1 flex-col gap-0.5 leading-[1.4]">
+              <span className="truncate text-[10px] text-sub">{p.brand}</span>
+              <span className="line-clamp-2 text-[12px] font-bold">{p.label ?? p.name}</span>
+              <span className="text-[12px] font-bold text-plum">{won(p.price)}</span>
+              <span className="text-[9.5px] text-sub underline underline-offset-2">상세 보기</span>
+            </span>
+          </button>
           <div className="flex shrink-0 flex-col items-end gap-1">
-            <button type="button" onClick={() => addToCart(p)} className="rounded-[7px] border border-line bg-white px-2 py-1 text-[10px] leading-[1.4] text-plum">
+            <button type="button" onClick={() => addToCart(p, profile.gender)} className="rounded-[7px] border border-line bg-white px-2 py-1 text-[10px] leading-[1.4] text-plum">
               장바구니 담기
             </button>
             {(() => {
@@ -185,11 +195,6 @@ function ProductCards({ ids }: { ids: string[] }) {
                 </button>
               );
             })()}
-            {p.link && (
-              <a href={p.link} target="_blank" rel="noopener noreferrer" className="text-[10px] leading-[1.4] text-sub underline underline-offset-2">
-                판매처 보기
-              </a>
-            )}
           </div>
         </div>
       ))}
@@ -235,7 +240,32 @@ function ClosetCards({ samples }: { samples: string[] }) {
   );
 }
 
-function Message({ m }: { m: ChatMessage }) {
+/** 쇼핑메이트가 옷장에 넣어 준 추천 옷 + 아바타로 가는 버튼 */
+function TryOnCard({ ids }: { ids: string[] }) {
+  const products = ids.map(findProduct).filter((p): p is Product => !!p);
+  if (!products.length) return null;
+  return (
+    <section className="flex flex-col gap-[9.1px] rounded-[12.5px] border-[0.9px] border-line bg-white px-[12.5px] py-[11.25px]">
+      <div className="flex leading-[1.4]">
+        <h2 className="flex-1 text-[13.4px] font-bold">옷장에 넣었어요</h2>
+        <span className="text-[10px] font-medium text-plum">{products.length}벌</span>
+      </div>
+      <div className="flex gap-1.5">
+        {products.map((p) => (
+          <div key={p.id} className="flex min-w-0 flex-1 flex-col items-center gap-[3.8px]">
+            <img src={p.image} alt="" className="aspect-square w-full max-w-[86px] rounded-[8.93px] object-cover" />
+            <span className="w-full truncate text-center text-[10px] leading-[1.4] text-sub">{p.label ?? p.name}</span>
+          </div>
+        ))}
+      </div>
+      <Link href="/avatar" className="rounded-[10px] bg-plum py-2.5 text-center text-[12px] leading-[1.4] font-bold text-white">
+        아바타에게 입혀 보기
+      </Link>
+    </section>
+  );
+}
+
+function Message({ m, onOpen }: { m: ChatMessage; onOpen: (id: string) => void }) {
   if (m.role === "user")
     return (
       <>
@@ -248,7 +278,8 @@ function Message({ m }: { m: ChatMessage }) {
       <BotName />
       <p className="text-[12.5px] leading-[1.4] whitespace-pre-line">{m.text}</p>
       {m.closet?.length ? <ClosetCards samples={m.closet} /> : null}
-      {m.products?.length ? <ProductCards ids={m.products} /> : null}
+      {m.products?.length ? <ProductCards ids={m.products} onOpen={onOpen} /> : null}
+      {m.tryOn?.length ? <TryOnCard ids={m.tryOn} /> : null}
     </div>
   );
 }
@@ -259,6 +290,9 @@ export default function ChatPage() {
   const [text, setText] = useState("");
   const [typing, setTyping] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
+  // 추천 상품 상세 보기 (모델 착용샷 · 치수)
+  const [productId, setProductId] = useState<string | null>(null);
+  const detailProduct = productId ? findProduct(productId) : undefined;
   // + 버튼으로 고른 첨부 (사진 최대 4장, 또는 영상에서 뽑은 4장면)
   const [attached, setAttached] = useState<{ images: string[]; video: boolean } | null>(null);
   const [preparing, setPreparing] = useState(false);
@@ -309,6 +343,8 @@ export default function ChatPage() {
     setTyping(true);
     setApp((s) => ({ chat: [...s.chat, { id: newId(), role: "user", text: value, ...(images.length ? { images, video: attached?.video } : {}) }] }));
     const reply = await getReply(value, images, app);
+    // 쇼핑메이트가 추천 옷을 옷장에 넣어 줘요 (아바타에서 입어 보기)
+    reply.tryOn?.map(findProduct).forEach((p) => p && addToCloset(p, app.profile.gender, true));
     setApp((s) => ({ chat: [...s.chat, { id: newId(), role: "bot", ...reply }] }));
     setTyping(false);
   };
@@ -320,7 +356,7 @@ export default function ChatPage() {
         {/* 예시 상담은 첫 메시지를 보내면 사라져요 */}
         {app.chat.length === 0 && !typing && <FirstAdvice onOpen={setDetailId} gender={app.profile.gender} />}
         {app.chat.map((m) => (
-          <Message key={m.id} m={m} />
+          <Message key={m.id} m={m} onOpen={setProductId} />
         ))}
         {typing && (
           <div className="flex w-full flex-col gap-[9.1px]">
@@ -405,6 +441,16 @@ export default function ChatPage() {
         <p className="text-center text-[10px] leading-[1.4] text-sub">추천은 참고용이에요. 중요한 정보는 한 번 더 확인해요.</p>
       </div>
 
+      {detailProduct && (
+        <ProductInfoModal
+          product={detailProduct}
+          onClose={() => setProductId(null)}
+          onAddToCart={() => {
+            addToCart(detailProduct, app.profile.gender);
+            setProductId(null);
+          }}
+        />
+      )}
       {detailItem && (
         <ProductDetailModal
           item={detailItem}

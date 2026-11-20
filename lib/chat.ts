@@ -14,6 +14,8 @@ export interface Reply {
   products?: string[];
   /** 옷장에서 골라 준 옷 (사진 보관함 예시 사진 id) */
   closet?: string[];
+  /** 옷장에 넣어 줄 추천 상품 id (아바타에서 입어 보기) */
+  tryOn?: string[];
 }
 
 /** 서버로 보내는 대화 한 줄 */
@@ -89,7 +91,45 @@ function buildContext(app: AppState): ChatContext {
 }
 
 /** 메시지를 보내면 답변을 돌려줍니다. Claude 연결이 안 되어 있으면 예시 답변을 써요. */
+/**
+ * 시연 대본 (여성 첫 출근): API 키가 있든 없든 항상 같은 답을 보내요.
+ * 1) "다음 주가 첫 출근인데 어떤 옷을 사야 할까?" → 고정 추천 세 벌 (lib/products.ts FIRST_WORK_FEMALE)
+ * 2) 그 뒤 "아바타한테 입혀 보고 싶어 / 어떤 핏일까" → 세 벌을 옷장에 넣어 주고 아바타로 안내
+ */
+function scriptedReply(message: string, app: AppState): Reply | null {
+  if (app.profile.gender !== "female") return null;
+  const text = message.trim();
+  const name = app.profile.nickname?.trim() || "사용자";
+  const recommended = app.chat.some((m) => m.role === "bot" && m.products?.includes(FIRST_WORK_FEMALE[0]));
+  if (recommended && /입혀|입어\s*보|아바타|핏/.test(text)) {
+    return {
+      text:
+        "좋아요! 이 제품들을 옷장에 추가해 드릴게요.\n" +
+        "아바타에게 직접 입혀 보실 수 있어요. 아래 버튼을 눌러 아바타 탭으로 가면, 세 벌을 한 번에 입혀 볼 수도 있고 한 벌씩 입히고 벗겨 볼 수도 있어요.",
+      tryOn: FIRST_WORK_FEMALE,
+    };
+  }
+  if (isFirstWork(text)) {
+    return {
+      text:
+        "첫 출근을 앞두고 계시는군요, 정말 축하드려요!\n" +
+        "첫 출근에는 단정해 보이는 게 가장 중요하죠. 단정하지만 편안한 룩으로 골라 드릴게요.\n" +
+        "특히 다음 주는 기온이 많이 떨어진다고 하니, 따뜻한 겨울 옷으로 입는 게 좋을 거예요.\n\n" +
+        `${name}님의 체형과 퍼스널 컬러를 고려해서 제품을 추천해 드릴게요.\n` +
+        "회색 브이넥 니트에 블랙 슬랙스를 입고 다크 네이비 코트를 걸치면, 차분하면서도 신뢰감 있는 첫인상을 줄 수 있어요.\n" +
+        "블랙 슬랙스는 즐겨 입으시는 던스트 청바지와 상세 치수가 매우 유사해서, 편하게 맞으실 거예요.",
+      products: FIRST_WORK_FEMALE,
+    };
+  }
+  return null;
+}
+
 export async function getReply(message: string, images: string[], app: AppState): Promise<Reply> {
+  const scripted = !images.length && scriptedReply(message, app);
+  if (scripted) {
+    await new Promise((r) => setTimeout(r, 1200));
+    return scripted;
+  }
   const firstUserText = app.chat.find((m) => m.role === "user")?.text ?? message;
   const fromExample = FIRST_CHIPS.includes(firstUserText);
   const history: ChatTurn[] = [

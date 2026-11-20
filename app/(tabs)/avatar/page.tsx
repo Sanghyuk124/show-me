@@ -19,7 +19,7 @@ import {
   type GarmentSpec,
 } from "@/lib/garment";
 import type { ClosetItem } from "@/lib/data";
-import { lookPartOf, lookPhoto } from "@/lib/looks";
+import { lookPartOf, lookPhoto, type LookPart } from "@/lib/looks";
 import { setApp, showToast, useApp, myCloset } from "@/lib/store";
 
 // 3D 그래픽은 브라우저에서만 그릴 수 있어서, 화면이 열린 뒤에 불러와요.
@@ -89,6 +89,17 @@ export default function AvatarPage() {
       return;
     }
     setApp((st) => ({ wearing: { ...st.wearing, [kind]: item.id } }));
+  };
+
+  // 착용 사진 세트 옷이 옷장에 다 있으면 '추천 코디 한 번에 입혀보기' (채팅에서 옷장에 넣어 준 옷)
+  const lookItems = (["top", "bottom", "outer"] as LookPart[]).map((part) => closet.find((i) => lookPartOf(app.profile.gender, i) === part));
+  const lookReady = lookItems.every(Boolean);
+  const lookOn = lookReady && lookItems.every((i) => Object.values(app.wearing ?? {}).includes(i!.id));
+  const wearLook = () => {
+    if (!lookReady) return;
+    const [top, bottom, outer] = lookItems.map((i) => i!.id);
+    setApp(() => ({ wearing: { top, bottom, outer } }));
+    document.querySelector("main")?.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
@@ -221,6 +232,25 @@ export default function AvatarPage() {
             </Link>
           </div>
           <p className="text-[10px] leading-[1.4] whitespace-pre text-sub">{`내 옷 ${closet.length}개  ·  ★ 즐겨찾는 기준 옷`}</p>
+
+          {lookReady && (
+            <button
+              type="button"
+              onClick={wearLook}
+              disabled={lookOn}
+              className="flex items-center gap-2.5 rounded-[9px] bg-lav px-2.5 py-2 text-left disabled:opacity-70"
+            >
+              <span className="flex shrink-0 -space-x-3">
+                {lookItems.map((i) => (
+                  <ClosetThumb key={i!.id} item={i!} className="size-9 rounded-[6px] ring-2 ring-lav" />
+                ))}
+              </span>
+              <span className="flex min-w-0 flex-1 flex-col leading-[1.4]">
+                <span className="text-[12px] font-bold text-plum">{lookOn ? "추천 코디를 입었어요 ✓" : "추천 코디 한 번에 입혀보기"}</span>
+                <span className="truncate text-[10px] text-sub">채팅에서 추천받은 세 벌을 함께 입혀 봐요</span>
+              </span>
+            </button>
+          )}
 
           <div className="grid grid-cols-2 gap-x-[7px] gap-y-[9.4px]">
             {closet.map((item) => {

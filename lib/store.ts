@@ -31,6 +31,8 @@ export interface ChatMessage {
   products?: string[];
   /** 쇼핑메이트가 옷장에서 골라 준 옷 (사진 보관함 예시 사진 id, lib/data.ts SAMPLE_PHOTOS) */
   closet?: string[];
+  /** 쇼핑메이트가 옷장에 넣어 준 추천 상품 id (아바타에서 입어 보기) */
+  tryOn?: string[];
 }
 
 export interface AppState {
