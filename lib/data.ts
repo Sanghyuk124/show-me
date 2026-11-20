@@ -297,7 +297,7 @@ export const TASTE_SET_SIZE = 9;
  * 사용자가 앱에서 직접 등록하는 옷은 이 목록이 아니라 브라우저에 저장돼요.
  */
 /** 예전 버전의 여성 예시 옷 (셔츠·가디건·슬랙스·토트백) — 저장된 옷장에서 한 번 지워요 */
-export const RETIRED_SEED_IDS = ["shirt", "cardigan", "slacks", "tote"];
+export const RETIRED_SEED_IDS = ["shirt", "cardigan", "slacks", "tote", "demo-f-uniqlo-rib"];
 
 export const CLOSET_SEED: ClosetItem[] = [
   // ── 여성 옷장 (판매처 상품 페이지의 사진·실측, 단면은 × 2로 둘레 환산) ──
@@ -316,16 +316,16 @@ export const CLOSET_SEED: ClosetItem[] = [
     measures: { length: "56", shoulder: "36.5", chest: "77", sleeve: "56", waist: "77" },
   },
   {
-    id: "demo-f-uniqlo-rib",
-    name: "유니클로 여성 소프트립 T 화이트",
-    category: "top",
+    id: "demo-f-musinsa-corduroy",
+    name: "브라운 코듀로이 부츠컷 팬츠",
+    category: "bottom",
     source: "link",
-    link: "https://www.uniqlo.com/kr/ko/products/E465751-000/00?colorDisplayCode=00&sizeDisplayCode=004",
-    image: "/images/closet/women/uniqlo-soft-rib-tee.jpg",
+    link: "https://www.musinsa.com/products/2568782",
+    image: "/images/closet/women/musinsa-corduroy-bootcut.jpg",
     gender: "female",
     favorite: false,
     confirmed: false,
-    size: "M",
+    // 실측은 일부러 비워 둬요 (시연에서 직접 입력)
     measures: {},
   },
   // 채팅 첫 화면 '데이트 룩 예시'에 나오는 옷 3벌 (app/(tabs)/chat/page.tsx EXAMPLE.female)
