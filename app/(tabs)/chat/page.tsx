@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ProductDetailModal } from "@/components/MeasureModal";
+import { MeasureModal, ProductDetailModal } from "@/components/MeasureModal";
 import { ProductInfoModal } from "@/components/ProductInfoModal";
 import { useRouter } from "next/navigation";
 import { TabHeader } from "@/components/ui";
@@ -240,6 +240,35 @@ function ClosetCards({ samples }: { samples: string[] }) {
   );
 }
 
+/** 쇼핑메이트가 옷장에서 골라 준 옷 (옷장 옷 id) — 누르면 저장된 상세 치수 */
+function WardrobeCards({ ids, onOpen }: { ids: string[]; onOpen: (id: string) => void }) {
+  const { closet } = useApp();
+  const items = ids.map((id) => closet.find((i) => i.id === id)).filter((i): i is ClosetItem => !!i);
+  if (!items.length) return null;
+  return (
+    <section className="flex flex-col gap-[9.1px] rounded-[12.5px] border-[0.9px] border-line bg-white px-[12.5px] py-[11.25px]">
+      <div className="flex leading-[1.4]">
+        <h2 className="flex-1 text-[13.4px] font-bold">내 옷장에서 골랐어요</h2>
+        <span className="text-[10px] font-medium text-plum">{items.length}벌</span>
+      </div>
+      {items.map((item) => (
+        <button key={item.id} type="button" onClick={() => onOpen(item.id)} className="flex items-center gap-2.5 text-left">
+          <ClosetThumb item={item} className="size-16 shrink-0 rounded-[8.93px]" />
+          <span className="flex min-w-0 flex-1 flex-col gap-0.5 leading-[1.4]">
+            <span className="text-[10px] text-sub">{item.favorite ? "★ 내 옷장" : "내 옷장"}</span>
+            <span className="line-clamp-2 text-[12px] font-bold">{item.name}</span>
+            <span className="text-[10px] font-medium text-plum">
+              {item.size ? `사이즈 ${item.size} · ` : ""}
+              {Object.values(item.measures ?? {}).some((v) => String(v).trim()) ? "실측 저장됨 · 오버핏" : "실측 필요"}
+            </span>
+          </span>
+          <span className="shrink-0 text-[10px] text-sub underline underline-offset-2">상세 치수</span>
+        </button>
+      ))}
+    </section>
+  );
+}
+
 /** 쇼핑메이트가 옷장에 넣어 준 추천 옷 + 아바타로 가는 버튼 */
 function TryOnCard({ ids }: { ids: string[] }) {
   const products = ids.map(findProduct).filter((p): p is Product => !!p);
@@ -265,7 +294,7 @@ function TryOnCard({ ids }: { ids: string[] }) {
   );
 }
 
-function Message({ m, onOpen }: { m: ChatMessage; onOpen: (id: string) => void }) {
+function Message({ m, onOpen, onOpenItem }: { m: ChatMessage; onOpen: (id: string) => void; onOpenItem: (id: string) => void }) {
   if (m.role === "user")
     return (
       <>
@@ -280,6 +309,7 @@ function Message({ m, onOpen }: { m: ChatMessage; onOpen: (id: string) => void }
       {m.closet?.length ? <ClosetCards samples={m.closet} /> : null}
       {m.products?.length ? <ProductCards ids={m.products} onOpen={onOpen} /> : null}
       {m.tryOn?.length ? <TryOnCard ids={m.tryOn} /> : null}
+      {m.wardrobe?.length ? <WardrobeCards ids={m.wardrobe} onOpen={onOpenItem} /> : null}
     </div>
   );
 }
@@ -293,6 +323,9 @@ export default function ChatPage() {
   // 추천 상품 상세 보기 (모델 착용샷 · 치수)
   const [productId, setProductId] = useState<string | null>(null);
   const detailProduct = productId ? findProduct(productId) : undefined;
+  // 옷장에서 골라 준 옷의 상세 치수
+  const [measureId, setMeasureId] = useState<string | null>(null);
+  const measureItem = app.closet.find((i) => i.id === measureId);
   // + 버튼으로 고른 첨부 (사진 최대 4장, 또는 영상에서 뽑은 4장면)
   const [attached, setAttached] = useState<{ images: string[]; video: boolean } | null>(null);
   const [preparing, setPreparing] = useState(false);
@@ -356,7 +389,7 @@ export default function ChatPage() {
         {/* 예시 상담은 첫 메시지를 보내면 사라져요 */}
         {app.chat.length === 0 && !typing && <FirstAdvice onOpen={setDetailId} gender={app.profile.gender} />}
         {app.chat.map((m) => (
-          <Message key={m.id} m={m} onOpen={setProductId} />
+          <Message key={m.id} m={m} onOpen={setProductId} onOpenItem={setMeasureId} />
         ))}
         {typing && (
           <div className="flex w-full flex-col gap-[9.1px]">
@@ -441,6 +474,7 @@ export default function ChatPage() {
         <p className="text-center text-[10px] leading-[1.4] text-sub">추천은 참고용이에요. 중요한 정보는 한 번 더 확인해요.</p>
       </div>
 
+      {measureItem && <MeasureModal item={measureItem} onClose={() => setMeasureId(null)} />}
       {detailProduct && (
         <ProductInfoModal
           product={detailProduct}

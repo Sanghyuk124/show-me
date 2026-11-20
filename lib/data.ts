@@ -161,7 +161,35 @@ export interface LinkPreset {
   sizes: Record<string, Measures>;
 }
 
+/** 남성 데이트 시연: 링크로 옷장에 넣는 던스트 니트·팬츠 (사이즈 가이드 단면 × 2) */
+export const DUNST_KNIT_LINK = "https://dunststudio.com/product/detail.html?product_no=9792&cate_no=303&display_group=1";
+export const DUNST_PANTS_LINK = "https://dunststudio.com/product/detail.html?product_no=9131&cate_no=303&display_group=1";
+
 export const LINK_PRESETS: LinkPreset[] = [
+  {
+    match: ["dunststudio.com/product/detail.html?product_no=9792"],
+    name: "던스트 스트라이프 니트",
+    category: "top",
+    image: "/images/products/dunst-striped-chunky-sweater.jpg",
+    sizes: {
+      XS: { length: "55", shoulder: "48", chest: "106", hem: "82", armhole: "22.5", sleeve: "54" },
+      S: { length: "57", shoulder: "50", chest: "110", hem: "86", armhole: "23.5", sleeve: "55" },
+      M: { length: "63", shoulder: "53", chest: "116", hem: "92", armhole: "24.5", sleeve: "56" },
+      L: { length: "65", shoulder: "56", chest: "122", hem: "98", armhole: "25.5", sleeve: "58.5" },
+      XL: { length: "67", shoulder: "59", chest: "128", hem: "102", armhole: "26.5", sleeve: "60" },
+    },
+  },
+  {
+    match: ["dunststudio.com/product/detail.html?product_no=9131"],
+    name: "던스트 카키 팬츠",
+    category: "bottom",
+    image: "/images/products/dunst-wide-chino-slacks.jpg",
+    sizes: {
+      S: { length: "106", waist: "78", hip: "103.4", thigh: "72", hem: "53", rise: "30.5" },
+      M: { length: "108", waist: "82", hip: "107.4", thigh: "76", hem: "55", rise: "31.5" },
+      L: { length: "110", waist: "86", hip: "111.4", thigh: "80", hem: "57", rise: "32.5" },
+    },
+  },
   {
     match: ["example.com/showme/women-cardigan"],
     name: "아이보리 가디건",
@@ -341,9 +369,9 @@ export const CLOSET_SEED: ClosetItem[] = [
     gender: "male", // 남성 옷 (id 는 예전 이름 그대로 — 저장된 옷장도 다음 접속 때 남성 옷장으로 옮겨져요)
     favorite: false,
     confirmed: true,
-    size: "S",
-    // S: 총장 62 · 화장 81.5 · 가슴 58.5 · 밑단 43.5 · 암홀 24.5 · 팔통 24.5 (래글런이라 어깨너비 없음)
-    measures: { length: "62", chest: "117", waist: "87" },
+    size: "L",
+    // L (단면): 총장 66 · 화장 88 · 가슴 65 · 밑단 49 · 암홀 26 · 팔통 27.5 (래글런이라 어깨너비 없음) — 둘레는 단면 × 2
+    measures: { length: "66", raglan: "88", chest: "130", hem: "98", armhole: "26", armWidth: "27.5" },
   },
   {
     id: "demo-f-generalidea-denim",

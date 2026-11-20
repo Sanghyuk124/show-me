@@ -33,6 +33,8 @@ export interface ChatMessage {
   closet?: string[];
   /** 쇼핑메이트가 옷장에 넣어 준 추천 상품 id (아바타에서 입어 보기) */
   tryOn?: string[];
+  /** 쇼핑메이트가 옷장에서 골라 준 옷 (옷장 옷 id) */
+  wardrobe?: string[];
 }
 
 export interface AppState {

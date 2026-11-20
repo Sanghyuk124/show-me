@@ -97,7 +97,8 @@ export function RegisterItemModal({
       // 판매처 실측을 불러왔으면 '확인 필요' 상태로 (실측 창에서 확인·수정)
       prefilled: source.measures ? true : undefined,
     };
-    setApp((s) => ({ closet: [item, ...s.closet] }));
+    // 지금 성별의 옷장에 넣어요 (성별을 바꾸면 그 성별 옷장만 보여요)
+    setApp((s) => ({ closet: [{ ...item, gender: s.profile.gender }, ...s.closet] }));
     onCreated(item);
   };
 
