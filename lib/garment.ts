@@ -666,10 +666,11 @@ const COLOR_WORDS: [RegExp, string][] = [
   [/그레이|회색|gray|grey|차콜|charcoal/i, "#7c7c80"],
   [/브라운|갈색|brown|카멜|camel/i, "#7a5741"],
   [/카키|khaki|올리브|olive/i, "#6b6a45"],
-  [/데님|청|denim|블루|blue/i, "#4a6489"],
   [/레드|빨간|red|버건디|burgundy|와인/i, "#7d2b33"],
-  [/핑크|pink/i, "#d9a0ad"],
+  [/핑크|pink/i, "#b77a84"],
   [/그린|초록|green/i, "#4f6b52"],
+  // '데님'은 색이 아니라 소재라서 맨 뒤에 (예: 핑크 워싱 데님 → 핑크)
+  [/데님|청|denim|블루|blue/i, "#4a6489"],
 ];
 
 /** 옷 색: 이름에 색 이름이 있으면 그 색, 없으면 사진 가운데의 평균 색 */
