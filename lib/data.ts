@@ -296,52 +296,80 @@ export const TASTE_SET_SIZE = 9;
  * - favorite: true 면 즐겨찾기(각 탭 맨 위), measures: 실측(cm). 비워 두면 '실측 필요'로 보여요.
  * 사용자가 앱에서 직접 등록하는 옷은 이 목록이 아니라 브라우저에 저장돼요.
  */
+/** 예전 버전의 여성 예시 옷 (셔츠·가디건·슬랙스·토트백) — 저장된 옷장에서 한 번 지워요 */
+export const RETIRED_SEED_IDS = ["shirt", "cardigan", "slacks", "tote"];
+
 export const CLOSET_SEED: ClosetItem[] = [
+  // ── 여성 옷장 (판매처 상품 페이지의 사진·실측, 단면은 × 2로 둘레 환산) ──
   {
-    id: "shirt",
-    name: "아이보리 셔츠",
+    id: "demo-f-oafish-tee",
+    name: "오피쉬 베이직 시스루 롱슬리브 베이지",
     category: "top",
-    source: "photo",
-    image: "/images/closet/shirt.jpg",
+    source: "link",
+    link: "https://oafish.kr/product/detail.html?product_no=280",
+    image: "/images/closet/women/oafish-seethrough-longsleeve.jpg",
     gender: "female",
     favorite: true,
-    confirmed: false,
-    measures: {},
+    confirmed: true,
+    size: "FREE",
+    // FREE: 총장 56 · 어깨 36.5 · 가슴단면 38.5 · 소매 56 · 밑단단면 38.5
+    measures: { length: "56", shoulder: "36.5", chest: "77", sleeve: "56", waist: "77" },
   },
   {
-    id: "cardigan",
-    name: "네이비 가디건",
-    category: "outer",
+    id: "demo-f-uniqlo-rib",
+    name: "유니클로 여성 소프트립 T 화이트",
+    category: "top",
     source: "link",
-    image: "/images/closet/cardigan.jpg",
+    link: "https://www.uniqlo.com/kr/ko/products/E465751-000/00?colorDisplayCode=00&sizeDisplayCode=004",
+    image: "/images/closet/women/uniqlo-soft-rib-tee.jpg",
     gender: "female",
     favorite: false,
-    confirmed: false,
-    measures: {},
-  },
-  {
-    id: "slacks",
-    name: "블랙 슬랙스",
-    category: "bottom",
-    source: "link",
-    image: "/images/closet/slacks.jpg",
-    gender: "female",
-    favorite: true,
-    prefilled: true,
     confirmed: false,
     size: "M",
-    measures: { waist: "72", hip: "96", thigh: "60", rise: "29", length: "99" },
+    measures: {},
   },
+  // 채팅 첫 화면 '데이트 룩 예시'에 나오는 옷 3벌 (app/(tabs)/chat/page.tsx EXAMPLE.female)
   {
-    id: "tote",
-    name: "블랙 토트백",
-    category: "bag",
-    source: "photo",
-    image: "/images/closet/tote.jpg",
+    id: "demo-f-dunst-blouson",
+    name: "던스트 해링턴 울 블루종 브라운",
+    category: "outer",
+    source: "link",
+    link: "https://dunststudio.com/product/detail.html?product_no=9857&cate_no=759&display_group=1",
+    image: "/images/closet/women/dunst-harrington-blouson.jpg",
     gender: "female",
     favorite: false,
-    confirmed: false,
-    measures: {},
+    confirmed: true,
+    size: "S",
+    // S: 총장 62 · 화장 81.5 · 가슴 58.5 · 밑단 43.5 · 암홀 24.5 · 팔통 24.5 (래글런이라 어깨너비 없음)
+    measures: { length: "62", chest: "117", waist: "87" },
+  },
+  {
+    id: "demo-f-generalidea-denim",
+    name: "제너럴아이디어 와이드 워싱 데님 블루",
+    category: "bottom",
+    source: "link",
+    link: "https://m.generalidea.co.kr/product/detail.html?product_no=5876&cate_no=382&display_group=1",
+    image: "/images/closet/women/generalidea-wide-denim.jpg",
+    gender: "female",
+    favorite: true,
+    confirmed: true,
+    size: "S",
+    // S: 허리 33 · 힙 47 · 허벅지 32 · 밑단 23 · 밑위 34 · 총장 105
+    measures: { waist: "66", hip: "94", thigh: "64", rise: "34", length: "105", hem: "46" },
+  },
+  {
+    id: "demo-f-haharchive-bag",
+    name: "하하아카이브 컨투어 숄더백 블랙",
+    category: "bag",
+    source: "link",
+    link: "https://haharchive.com/product/detail.html?product_no=185&cate_no=26&display_group=1",
+    image: "/images/closet/women/haharchive-contour-bag.jpg",
+    gender: "female",
+    favorite: false,
+    confirmed: true,
+    size: "FREE",
+    // Width 44 · Height 32 · Depth 16
+    measures: { width: "44", height: "32", depth: "16" },
   },
   // ── 남성 시연 세트 (lib/demoGarments.ts) ──
   ...(["m-hoodie", "m-tee", "m-pants"] as const).map((id) => {

@@ -9,6 +9,7 @@ import {
   BODY_SEED,
   CART_SEED,
   CLOSET_SEED,
+  RETIRED_SEED_IDS,
   type CartItem,
   type ClosetItem,
   type Measures,
@@ -106,6 +107,8 @@ function load() {
     if (saved) {
       // 예전 시연 옷(목록에서 빠진 것)은 지우고, 시연 옷 정보(사진·실측)는 최신으로 맞춰요
       const seedIds = new Set(CLOSET_SEED.map((c) => c.id));
+      // 예전 여성 예시 옷(셔츠·가디건·슬랙스·토트백)은 새 여성 옷으로 바뀌었어요
+      state = { ...state, closet: state.closet.filter((i) => !RETIRED_SEED_IDS.includes(i.id)) };
       state = {
         ...state,
         closet: state.closet
