@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import "@fontsource/noto-emoji/400.css";
 import { ProfileEditModal } from "@/components/ProfileEditModal";
 import { BackButton, cn, HeaderIcons } from "@/components/ui";
@@ -21,6 +22,7 @@ function Info({ label, value, unit }: { label: string; value: string; unit?: str
 }
 
 export default function MyPage() {
+  const router = useRouter();
   const { profile } = useApp();
   const [editing, setEditing] = useState(false);
   const color = PERSONAL_COLORS.find((c) => c.id === profile.personalColor)?.short ?? "아직 모름";
@@ -94,9 +96,22 @@ export default function MyPage() {
         <footer className="flex flex-col gap-1 text-center text-sub">
           <p className="text-[11px] leading-[18px] font-bold">Show Me</p>
           <p className="text-[10px] leading-[17px]">나다움을 찾는 여정</p>
+          {/* 시연용: 모든 기록을 지우고 첫 화면(시작 → 온보딩 3단계)부터 다시 보기 */}
           <button
             type="button"
-            className="mt-3 text-[10px] text-faint underline underline-offset-2"
+            className="mx-auto mt-4 rounded-lg border border-plum bg-white px-4 py-2 text-[11px] font-bold text-plum"
+            onClick={() => {
+              if (window.confirm("모든 기록을 지우고 첫 화면부터 다시 시작할까요?")) {
+                resetApp();
+                router.replace("/");
+              }
+            }}
+          >
+            처음부터 다시 시작하기
+          </button>
+          <button
+            type="button"
+            className="mt-2 text-[10px] text-faint underline underline-offset-2"
             onClick={() => {
               if (window.confirm("입력한 내용을 지우고 처음 상태로 되돌릴까요?")) {
                 resetApp();
