@@ -25,6 +25,12 @@ export interface Product {
   tags?: string[];
   /** 핏·소재 한 줄 설명 */
   desc?: string;
+  /** 채팅 카드·상세 창에 크게 보여 줄 쉬운 이름 (예: "회색 브이넥 니트") */
+  label?: string;
+  /** 상세 창의 모델 착용샷 */
+  modelImages?: string[];
+  /** 상세 창에 보여 줄 사이즈표 (판매처 표기 그대로, 단면 cm) */
+  sizeChart?: { size: string; rows: [string, string][] };
   /** 특정 성별용이면 지정 (비우면 공용) */
   gender?: Gender;
   /** 이 상황을 물으면 꼭 이 상품을 추천해요 (시연용 고정 추천, 예: "남성 데이트 룩") */
@@ -59,14 +65,11 @@ export const PRODUCTS: Product[] = [
     image: "/images/products/dunst-classic-vneck-sweater.jpg",
     link: "https://dunststudio.com/product/detail.html?product_no=5404&cate_no=271&display_group=1",
     colors: ["멜란지 그레이"],
-    // 사이즈 가이드 (단면): XS 총장56 화장80 가슴50 밑단37.5 팔통18 … XL 총장68 화장88 가슴64 밑단50 팔통23 · 여성 모델 S 착용
-    sizes: {
-      XS: { length: "56", raglan: "80", chest: "100", hem: "75", armWidth: "18" },
-      S: { length: "58", raglan: "82", chest: "104", hem: "79", armWidth: "19" },
-      M: { length: "64", raglan: "84", chest: "120", hem: "92", armWidth: "21" },
-      L: { length: "66", raglan: "86", chest: "124", hem: "96", armWidth: "22" },
-      XL: { length: "68", raglan: "88", chest: "128", hem: "100", armWidth: "23" },
-    },
+    // 시연용: S 사이즈만 (단면) 총장58 화장82 가슴52 밑단39.5 팔통19 — sizes 는 둘레 기준(단면 × 2)
+    sizes: { S: { length: "58", raglan: "82", chest: "104", hem: "79", armWidth: "19" } },
+    label: "회색 브이넥 니트",
+    modelImages: ["/images/products/dunst-classic-vneck-sweater-model.webp"],
+    sizeChart: { size: "S", rows: [["총장", "58"], ["화장", "82"], ["가슴", "52"], ["밑단", "39.5"], ["팔통", "19"]] },
     tags: ["미니멀", "오피스", "출근"],
     desc: "단정한 브이넥 니트, 셔츠 위에 레이어드하기 좋아요. 울 43% · 나일론 42% · 폴리 15%. 화장=목 뒤 중심~소매 끝. 정가 109,000원 (할인가)",
     pinnedFor: ["여성 첫 출근 룩"],
@@ -80,12 +83,11 @@ export const PRODUCTS: Product[] = [
     image: "/images/products/dunst-semi-bootcut-slacks.jpg",
     link: "https://dunststudio.com/product/detail.html?product_no=8335&cate_no=24&display_group=1",
     colors: ["블랙"],
-    // 사이즈 가이드 (단면): S 총장104 허리34.5 힙46 허벅지28.5 밑단23 밑위26 … L 총장108 허리38.5 힙50 허벅지30.5 밑단25 밑위28 · 여성 모델 S 착용
-    sizes: {
-      S: { length: "104", waist: "69", hip: "92", thigh: "57", hem: "46", rise: "26" },
-      M: { length: "106", waist: "73", hip: "96", thigh: "59", hem: "48", rise: "27" },
-      L: { length: "108", waist: "77", hip: "100", thigh: "61", hem: "50", rise: "28" },
-    },
+    // 시연용: S 사이즈만 (단면) 총장104 허리34.5 힙46 허벅지28.5 밑단23 밑위26 — sizes 는 둘레 기준(단면 × 2)
+    sizes: { S: { length: "104", waist: "69", hip: "92", thigh: "57", hem: "46", rise: "26" } },
+    label: "블랙 슬랙스",
+    modelImages: ["/images/products/dunst-semi-bootcut-slacks-model.webp"],
+    sizeChart: { size: "S", rows: [["총장", "104"], ["허리", "34.5"], ["힙", "46"], ["허벅지", "28.5"], ["밑단", "23"], ["밑위", "26"]] },
     tags: ["미니멀", "오피스", "출근"],
     desc: "다리가 길어 보이는 세미 부츠컷 슬림 슬랙스. 폴리 62% · 레이온 27% · 울 7% · 폴리우레탄 4%. 정가 119,000원 (할인가)",
     pinnedFor: ["여성 첫 출근 룩"],
@@ -101,6 +103,8 @@ export const PRODUCTS: Product[] = [
     colors: ["다크 네이비"],
     // 사이즈 (단면, 원사이즈): 총장 113, 어깨 54, 가슴 56, 소매 길이 54.5, 소매 폭 25
     sizes: { ONE: { length: "113", shoulder: "54", chest: "112", sleeve: "54.5", armWidth: "25" } },
+    label: "다크 네이비 코트",
+    sizeChart: { size: "원사이즈", rows: [["총장", "113"], ["어깨", "54"], ["가슴", "56"], ["소매 길이", "54.5"], ["소매 폭", "25"]] },
     tags: ["미니멀", "오피스", "출근"],
     desc: "벨트가 있는 울 블렌드 부클 롱코트, 원사이즈. 겉감 울 70% · 나일론 30%, 안감 폴리 100%. 정가 359,000원 (할인가)",
     pinnedFor: ["여성 첫 출근 룩"],
