@@ -26,14 +26,14 @@ const EXAMPLE = {
     end: ["안에는 옷장의 베이지 시스루 롱슬리브를 받쳐 입으면 충분해요.", "데이트 장소는 어디인가요?"],
   },
   male: {
-    title: "편안하지만 신경 쓴 느낌으로",
+    title: "자연스럽지만 단정하게",
     outfit: [
-      { id: "demo-m-tee", label: "롱슬리브", name: "블랙 그래픽 롱슬리브", src: "/demo-garments/m-tee-photo.webp" },
-      { id: "demo-m-cardigan", label: "니트 가디건", name: "브라운 집업 니트 가디건", src: "/demo-garments/m-cardigan-photo.webp" },
-      { id: "demo-m-pants", label: "데님", name: "핑크 워싱 데님", src: "/demo-garments/m-pants.webp" },
+      { id: "shirt", label: "셔츠", name: "아이보리 셔츠", src: "/images/closet/shirt.jpg" },
+      { id: "slacks", label: "슬랙스", name: "블랙 슬랙스", src: "/images/closet/slacks.jpg" },
+      { id: "cardigan", label: "가디건", name: "네이비 가디건", src: "/images/closet/cardigan.jpg" },
     ],
-    why: ["01   블랙 롱슬리브가 전체 톤을 차분하게 잡아줘요.", "02   브라운 니트 가디건이 다정한 인상을 더해요.", "03   핑크 데님이 포인트가 되어 밝은 분위기를 줘요."],
-    end: ["깔끔한 스니커즈를 신으면 충분해요.", "데이트 장소는 어디인가요?"],
+    why: ["01   아이보리 셔츠가 얼굴을 환하게 밝혀줘요.", "02   가디건이 부드럽고 다정한 인상을 더해요.", "03   블랙 슬랙스가 전체를 깔끔하게 잡아줘요."],
+    end: ["가지고 있는 검정 토트백을 더하면 충분해요.", "데이트 장소는 어디인가요?"],
   },
 };
 const MAX_ATTACH = 4;
