@@ -44,7 +44,7 @@ export function guide(item: ClosetItem) {
     return {
       tone: "lav",
       title: "판매처 링크에서 실측을 불러왔어요.",
-      lines: [`선택 사이즈 ${item.size ?? "M"} · 예시 데이터`, "단면 치수는 둘레로 환산했어요.", "자동 입력된 값도 확인하고 수정할 수 있어요."],
+      lines: [`선택 사이즈 ${item.size ?? "M"}`, "단면 치수는 둘레로 환산했어요.", "자동 입력된 값도 확인하고 수정할 수 있어요."],
     };
   }
   if (item.source === "link") {
@@ -140,7 +140,7 @@ export function MeasureModal({ item, onClose }: { item: ClosetItem; onClose: () 
         <>
           <div className="flex flex-col gap-[5px] rounded-[10px] bg-lav p-3 leading-[1.5]">
             <p className="text-[12px] font-bold text-plum">
-              ★ 즐겨찾는 {copy.label} · {item.confirmed ? "기준 실측 완료" : "예시 확인 필요"}
+              ★ 즐겨찾는 {copy.label} · {item.confirmed ? "기준 실측 완료" : "실측 확인 후 저장해 주세요"}
             </p>
             <p className="text-[10px] text-sub">{topDone ? "상·하의 기준 실측이 완성됐어요." : "상의도 1벌 이상 실측을 입력하면 기준이 완성돼요."}</p>
           </div>
@@ -191,8 +191,9 @@ export function itemStatus(item: ClosetItem) {
   const source = item.source === "photo" ? "사진 등록" : "링크 등록";
   if (item.category === "bag") return item.confirmed ? "가방 · 실측 완료" : `가방 · ${source}`;
   if (item.confirmed) return `${source} · ${item.favorite ? "기준 실측 완료" : "실측 완료"}`;
-  if (item.prefilled) return `${source} · 예시 확인 필요`;
-  return item.source === "photo" ? `${source} · 실측 필요` : `${source} · 실측 자동 입력`;
+  // 실측이 들어 있으면 '실측 완료', 비어 있으면 '실측 필요'
+  const has = Object.values(item.measures ?? {}).some((v) => String(v).trim());
+  return `${source} · ${has ? "실측 완료" : "실측 필요"}`;
 }
 
 /** Figma 05b · 제품 상세 단독 — 채팅 추천 코디의 옷을 눌렀을 때 */
@@ -201,7 +202,8 @@ export function ProductDetailModal({ item, onClose, onAddToCart }: { item: Close
   const copy = COPY[item.category];
   const g = guide(item);
   const topDone = myCloset(app).some((i) => i.favorite && (i.category === "top" || i.category === "outer") && i.confirmed);
-  const status = item.confirmed ? "기준 실측 완료" : item.prefilled ? "예시 확인 필요" : "실측 확인 필요";
+  const has = Object.values(item.measures ?? {}).some((v) => String(v).trim());
+  const status = item.confirmed ? "기준 실측 완료" : has ? "실측 완료" : "실측 필요";
 
   return (
     <Modal title="제품 상세 정보" onClose={onClose} align="center" className="gap-3.5 px-[22px] py-[18px]">
