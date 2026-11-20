@@ -113,7 +113,7 @@ export default function AvatarPage() {
           </span>
           {/* 2D: 정면 아바타 위에 실제 옷 사진(누끼)을 실측대로 겹쳐요 · 3D: 드래그해서 돌려 보고, 정면·측면·후면 버튼으로 각도를 바꿔요 */}
           {look ? (
-            <div className="relative h-[360px] w-full overflow-hidden rounded-[8px] bg-[#f3f3f3]">
+            <div className="relative mx-auto aspect-[3/4] h-[380px] overflow-hidden rounded-[8px] bg-[#eeeeee]">
               <img
                 key={look.src}
                 src={look.src}
@@ -170,7 +170,7 @@ export default function AvatarPage() {
           </button>
         </div>
 
-        {garments.length > 0 && (
+        {reports.some((r) => r.lines.length) && (
           <section className="flex flex-col gap-2 rounded-[10px] border border-line bg-white p-3">
             <div className="flex items-center gap-2 leading-[1.4]">
               <h2 className="flex-1 text-[13px] font-bold">입어 본 핏</h2>
