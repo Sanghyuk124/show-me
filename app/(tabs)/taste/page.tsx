@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { cn, TabHeader } from "@/components/ui";
 import { TASTE_PHOTOS, TASTE_SET_SIZE, tastePhoto, type Gender } from "@/lib/data";
-import { setApp, useApp } from "@/lib/store";
+import { allTastePicks, setApp, useApp } from "@/lib/store";
 
 /** 고른 사진의 태그를 세어 많이 나온 순서로 돌려줍니다. */
 function rankTags(picks: string[]) {
@@ -41,7 +41,10 @@ const validOrder = (order: string[], gender: Gender) => {
 
 /** Figma 08 · 취향 찾기 */
 export default function TastePage() {
-  const { tastePicks, tasteRound, tasteOrder, profile } = useApp();
+  const app = useApp();
+  const { tasteRound, tasteOrder, profile } = app;
+  // 온보딩 '좋아하는 스타일'에서 고른 사진도 취향에 함께 반영해요
+  const tastePicks = allTastePicks(app);
   const gender = profile.gender;
   // 지금 묶음에서 고른 사진 (저장하면 tastePicks에 더해지고, 다음 9장으로 넘어가요)
   const [picked, setPicked] = useState<string[]>([]);
