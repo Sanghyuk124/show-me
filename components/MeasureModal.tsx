@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Category, ClosetItem, Measures } from "@/lib/data";
 import { GENDER_LABEL } from "@/lib/data";
-import { myCloset, updateItem, useApp } from "@/lib/store";
+import { myCloset, showToast, updateItem, useApp } from "@/lib/store";
 import { cn, decimal, Modal } from "./ui";
 
 // optional: 비워도 저장할 수 있는 항목 (가슴 둘레는 아바타에 옷을 입혀 볼 때 핏을 더 정확하게 보여줘요)
@@ -78,6 +78,51 @@ function footnote(item: ClosetItem) {
   return [`${item.source === "photo" ? "사진" : "링크"} 등록 옷의 실측 입력은 선택이에요.`, "단, 즐겨찾는 기준 상·하의는 각각 1벌 이상 필요해요."];
 }
 
+/** 옷 이름 바꾸기: 연필 버튼을 누르면 바로 고칠 수 있어요 (입력을 마치면 바로 저장, 실측 저장과 따로) */
+function NameEditor({ item }: { item: ClosetItem }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(item.name);
+  const commitName = () => {
+    const next = name.trim();
+    if (next && next !== item.name) {
+      updateItem(item.id, { name: next });
+      showToast("옷 이름을 바꿨어요.");
+    } else setName(item.name);
+    setEditing(false);
+  };
+  if (editing)
+    return (
+      <div className="-mt-2 flex items-center gap-1.5">
+        <input
+          autoFocus
+          aria-label="옷 이름"
+          value={name}
+          maxLength={30}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={commitName}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commitName();
+            if (e.key === "Escape") {
+              e.stopPropagation();
+              setName(item.name);
+              setEditing(false);
+            }
+          }}
+          className="min-w-0 flex-1 rounded-[9px] border border-plum bg-white px-3 py-2 text-[14px] font-bold outline-none"
+        />
+        <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={commitName} className="shrink-0 rounded-[8px] bg-plum px-3 py-2 text-[12px] font-bold text-white">
+          저장
+        </button>
+      </div>
+    );
+  return (
+    <button type="button" onClick={() => setEditing(true)} className="-mt-2 flex items-center gap-1.5 self-start text-left" aria-label={`옷 이름 바꾸기: ${item.name}`}>
+      <span className="text-[15px] leading-[1.4] font-bold">{item.name}</span>
+      <span className="shrink-0 rounded-full border border-line px-2 py-0.5 text-[10px] text-sub">✎ 이름 수정</span>
+    </button>
+  );
+}
+
 export function MeasureModal({ item, onClose }: { item: ClosetItem; onClose: () => void }) {
   const app = useApp();
   const [draft, setDraft] = useState<Measures>(item.measures);
@@ -98,8 +143,9 @@ export function MeasureModal({ item, onClose }: { item: ClosetItem; onClose: () 
       className={item.prefilled ? "gap-3.5 px-[22px] py-[18px]" : "gap-4 p-[22px]"}
     >
       <p className="text-[12px] leading-[1.5] font-medium text-plum">
-        {GENDER_LABEL[app.profile.gender]} · {item.name} · {item.source === "photo" ? "사진" : "링크"} 등록
+        {GENDER_LABEL[app.profile.gender]} · {item.source === "photo" ? "사진" : "링크"} 등록
       </p>
+      <NameEditor item={item} />
 
       <div className={cn("flex flex-col gap-[5px] rounded-[10px] p-[13px] leading-[1.5]", g.tone === "sand" ? "bg-sand" : "bg-lav")}>
         <p className={cn("text-[13px] font-bold", g.tone === "lav" && "text-plum")}>{g.title}</p>
