@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ProductDetailModal } from "@/components/MeasureModal";
 import { useRouter } from "next/navigation";
 import { TabHeader } from "@/components/ui";
-import { FIRST_CHIPS, getReply, START_CHIPS } from "@/lib/chat";
+import { FIRST_CHIPS, FIRST_QUESTION, getReply, START_CHIPS } from "@/lib/chat";
 import { shrinkPhoto, videoFrames } from "@/lib/media";
 import { findProduct, type Product } from "@/lib/products";
 import { won } from "@/components/ui";
@@ -13,11 +13,29 @@ import { ClosetThumb } from "@/components/ClosetThumb";
 import { CART_SEED, SAMPLE_PHOTOS } from "@/lib/data";
 import { myCloset, setApp, showToast, useApp, type ChatMessage } from "@/lib/store";
 
-const OUTFIT = [
-  { id: "shirt", label: "셔츠", name: "아이보리 셔츠", src: "/images/closet/shirt.jpg" },
-  { id: "slacks", label: "슬랙스", name: "블랙 슬랙스", src: "/images/closet/slacks.jpg" },
-  { id: "cardigan", label: "가디건", name: "네이비 가디건", src: "/images/closet/cardigan.jpg" },
-];
+// 첫 화면 예시 상담(데이트 룩)에 보이는 옷장 옷 3벌 — 성별마다 달라요 (lib/chat.ts FIRST_EXCHANGE 와 같은 내용)
+const EXAMPLE = {
+  female: {
+    title: "자연스럽지만 단정하게",
+    outfit: [
+      { id: "shirt", label: "셔츠", name: "아이보리 셔츠", src: "/images/closet/shirt.jpg" },
+      { id: "slacks", label: "슬랙스", name: "블랙 슬랙스", src: "/images/closet/slacks.jpg" },
+      { id: "cardigan", label: "가디건", name: "네이비 가디건", src: "/images/closet/cardigan.jpg" },
+    ],
+    why: ["01   아이보리 셔츠가 얼굴을 환하게 밝혀줘요.", "02   가디건이 부드럽고 다정한 인상을 더해요.", "03   블랙 슬랙스가 전체를 깔끔하게 잡아줘요."],
+    end: ["가지고 있는 검정 토트백을 더하면 충분해요.", "데이트 장소는 어디인가요?"],
+  },
+  male: {
+    title: "편안하지만 신경 쓴 느낌으로",
+    outfit: [
+      { id: "demo-m-tee", label: "롱슬리브", name: "블랙 그래픽 롱슬리브", src: "/demo-garments/m-tee-photo.webp" },
+      { id: "demo-m-cardigan", label: "니트 가디건", name: "브라운 집업 니트 가디건", src: "/demo-garments/m-cardigan-photo.webp" },
+      { id: "demo-m-pants", label: "데님", name: "핑크 워싱 데님", src: "/demo-garments/m-pants.webp" },
+    ],
+    why: ["01   블랙 롱슬리브가 전체 톤을 차분하게 잡아줘요.", "02   브라운 니트 가디건이 다정한 인상을 더해요.", "03   핑크 데님이 포인트가 되어 밝은 분위기를 줘요."],
+    end: ["깔끔한 스니커즈를 신으면 충분해요.", "데이트 장소는 어디인가요?"],
+  },
+};
 const MAX_ATTACH = 4;
 const newId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -31,30 +49,28 @@ function UserBubble({ children }: { children: React.ReactNode }) {
 }
 const BotName = () => <p className="text-[10px] leading-[1.4] font-bold whitespace-pre text-plum">{"Show Me  ·  나만의 쇼핑메이트"}</p>;
 
-function FirstAdvice({ onOpen }: { onOpen: (id: string) => void }) {
+function FirstAdvice({ onOpen, gender }: { onOpen: (id: string) => void; gender: keyof typeof EXAMPLE }) {
+  const ex = EXAMPLE[gender];
   return (
     <>
-      <p className="text-center text-[10px] leading-[1.4] text-sub">첫 출근 상담 · 예시</p>
-      <UserBubble>
-        다음 주 첫 출근인데 뭘 입어야 할까?
-        {"\n"}너무 격식 차린 느낌은 싫어.
-      </UserBubble>
+      <p className="text-center text-[10px] leading-[1.4] text-sub">데이트 룩 상담 · 예시</p>
+      <UserBubble>{FIRST_QUESTION}</UserBubble>
       <div className="flex w-full flex-col gap-[9.1px]">
         <BotName />
         <p className="text-[12.5px] leading-[1.4]">
-          첫 출근, 설레면서도 고민되죠.
+          데이트 전날, 설레면서도 고민되죠.
           <br />
           우선 옷장에 있는 옷으로 시작해볼까요?
         </p>
         <section className="flex flex-col gap-[9.1px] rounded-[12.5px] border-[0.9px] border-line bg-white px-[12.5px] py-[11.25px]">
           <div className="flex leading-[1.4]">
-            <h2 className="flex-1 text-[13.4px] font-bold">단정하지만 편안하게</h2>
+            <h2 className="flex-1 text-[13.4px] font-bold">{ex.title}</h2>
             <span className="text-[10px] font-medium text-plum">내 옷 3벌</span>
           </div>
           <div className="flex gap-1.5">
-            {OUTFIT.map((o) => (
+            {ex.outfit.map((o) => (
               <button key={o.label} type="button" onClick={() => onOpen(o.id)} className="flex min-w-0 flex-1 flex-col items-center gap-[3.8px]">
-                <img src={o.src} alt={o.name} className="aspect-[86.16/85.6] w-full max-w-[86.16px] rounded-[8.93px] object-cover" />
+                <img src={o.src} alt={o.name} className="aspect-[86.16/85.6] w-full max-w-[86.16px] rounded-[8.93px] bg-[#f4f0eb] object-contain" />
                 <span className="text-center text-[10px] leading-[1.4] text-sub">{o.label}</span>
               </button>
             ))}
@@ -63,15 +79,15 @@ function FirstAdvice({ onOpen }: { onOpen: (id: string) => void }) {
         <section className="flex flex-col gap-[6.8px] rounded-[10.7px] bg-lav px-[14.3px] py-[12.9px]">
           <h2 className="text-[12px] leading-[1.4] font-bold text-plum">왜 이 조합일까요?</h2>
           <ol className="text-[10.7px] leading-[1.4] whitespace-pre-wrap">
-            <li>{"01   셔츠는 첫인상을 단정하게 잡아줘요."}</li>
-            <li>{"02   가디건이 재킷보다 편안한 인상을 더해요."}</li>
-            <li>{"03   비슷한 어두운 톤이 전체를 정돈해줘요."}</li>
+            {ex.why.map((w) => (
+              <li key={w}>{w}</li>
+            ))}
           </ol>
         </section>
         <p className="text-[12px] leading-[1.4]">
-          가지고 있는 검정 토트백을 더하면 충분해요.
+          {ex.end[0]}
           <br />
-          회사 복장 분위기는 어떤 편인가요?
+          {ex.end[1]}
         </p>
       </div>
     </>
@@ -260,7 +276,7 @@ export default function ChatPage() {
       <TabHeader title="쇼핑메이트" />
       <main ref={listRef} className="no-scrollbar flex min-h-0 flex-1 flex-col gap-[13.66px] overflow-y-auto px-[21.4px] pt-4 pb-[13.66px]">
         {/* 예시 상담은 첫 메시지를 보내면 사라져요 */}
-        {app.chat.length === 0 && !typing && <FirstAdvice onOpen={setDetailId} />}
+        {app.chat.length === 0 && !typing && <FirstAdvice onOpen={setDetailId} gender={app.profile.gender} />}
         {app.chat.map((m) => (
           <Message key={m.id} m={m} />
         ))}

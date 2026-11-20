@@ -25,7 +25,7 @@ export interface ChatTurn {
 }
 
 /** 채팅 첫 화면의 예시 대화 아래 추천 답변 */
-export const FIRST_CHIPS = ["자유로운 편이에요", "아직 잘 모르겠어요"];
+export const FIRST_CHIPS = ["카페나 전시회에 가요", "아직 장소를 안 정했어요"];
 
 /** 채팅 첫 화면의 추천 질문 칩 (성별마다). 미리 세팅해 둔 추천 답변으로 이어져요 */
 export const START_CHIPS: Record<Profile["gender"], string[]> = {
@@ -44,19 +44,34 @@ export interface ChatContext {
   closet: Pick<ClosetItem, "name" | "category" | "favorite" | "size" | "measures">[];
 }
 
-// 채팅 첫 화면의 예시 상담. 첫 메시지를 보내면 화면에서는 사라지지만,
+// 채팅 첫 화면의 예시 상담 (데이트 룩, 성별마다 옷장 옷이 달라요). 첫 메시지를 보내면 화면에서는 사라지지만,
 // 예시 아래 추천 답변(FIRST_CHIPS)으로 대화를 시작했다면 Claude가 이어서 답하도록 함께 보내요.
-const FIRST_EXCHANGE: ChatTurn[] = [
-  { role: "user", text: "다음 주 첫 출근인데 뭘 입어야 할까?\n너무 격식 차린 느낌은 싫어." },
-  {
-    role: "bot",
-    text:
-      "첫 출근, 설레면서도 고민되죠. 우선 옷장에 있는 옷으로 시작해볼까요?\n" +
-      "[단정하지만 편안하게] 아이보리 셔츠 + 블랙 슬랙스 + 네이비 가디건\n" +
-      "셔츠는 첫인상을 단정하게 잡아주고, 가디건이 재킷보다 편안한 인상을 더해요. 비슷한 어두운 톤이 전체를 정돈해줘요.\n" +
-      "가지고 있는 검정 토트백을 더하면 충분해요. 회사 복장 분위기는 어떤 편인가요?",
-  },
-];
+// 화면에 보이는 예시는 app/(tabs)/chat/page.tsx 의 EXAMPLE 과 같은 내용이에요.
+export const FIRST_QUESTION = "내일 데이트 가야 하는데 뭘 입어야 할까?\n너무 꾸민 느낌은 싫어.";
+const FIRST_EXCHANGE: Record<Profile["gender"], ChatTurn[]> = {
+  female: [
+    { role: "user", text: FIRST_QUESTION },
+    {
+      role: "bot",
+      text:
+        "데이트 전날, 설레면서도 고민되죠. 우선 옷장에 있는 옷으로 시작해볼까요?\n" +
+        "[자연스럽지만 단정하게] 아이보리 셔츠 + 블랙 슬랙스 + 네이비 가디건\n" +
+        "아이보리 셔츠가 얼굴을 환하게 밝혀 주고, 가디건이 부드럽고 다정한 인상을 더해요. 블랙 슬랙스가 전체를 깔끔하게 잡아줘요.\n" +
+        "가지고 있는 검정 토트백을 더하면 충분해요. 데이트 장소는 어디인가요?",
+    },
+  ],
+  male: [
+    { role: "user", text: FIRST_QUESTION },
+    {
+      role: "bot",
+      text:
+        "데이트 전날, 설레면서도 고민되죠. 우선 옷장에 있는 옷으로 시작해볼까요?\n" +
+        "[편안하지만 신경 쓴 느낌으로] 블랙 그래픽 롱슬리브 + 브라운 집업 니트 가디건 + 핑크 워싱 데님\n" +
+        "블랙 롱슬리브가 전체 톤을 차분하게 잡아 주고, 브라운 니트 가디건이 따뜻하고 다정한 인상을 더해요. 핑크 데님이 포인트가 되어 밝은 분위기를 줘요.\n" +
+        "데이트 장소는 어디인가요?",
+    },
+  ],
+};
 
 function buildContext(app: AppState): ChatContext {
   const count = new Map<string, number>();
@@ -78,7 +93,7 @@ export async function getReply(message: string, images: string[], app: AppState)
   const firstUserText = app.chat.find((m) => m.role === "user")?.text ?? message;
   const fromExample = FIRST_CHIPS.includes(firstUserText);
   const history: ChatTurn[] = [
-    ...(fromExample ? FIRST_EXCHANGE : []),
+    ...(fromExample ? FIRST_EXCHANGE[app.profile.gender] : []),
     ...app.chat.map((m) => ({ role: m.role, text: m.text, images: m.images })),
     { role: "user", text: message, images },
   ];
@@ -179,15 +194,18 @@ async function cannedReply(message: string, app: AppState): Promise<Reply> {
       chips: ["사이즈가 고민돼요", "다른 코디도 볼래요"],
     };
   }
-  if (text.includes("자유로운")) {
+  if (/카페|전시/.test(text)) {
+    const male = app.profile.gender === "male";
     return {
-      text: "그럼 셔츠 단추를 하나 풀고 가디건을 걸쳐보세요.\n첫날은 단정하게, 분위기를 본 뒤 다음 날부터 조금씩 힘을 빼도 좋아요.",
+      text: male
+        ? "카페나 전시회라면 오래 걷고 앉아 있으니 편한 게 최고예요.\n가디건은 실내에서 벗어 들기 좋고, 깔끔한 스니커즈를 신으면 롱슬리브와 데님의 캐주얼한 분위기가 살아나요."
+        : "카페나 전시회라면 오래 걷고 앉아 있으니 편한 게 최고예요.\n셔츠 단추를 하나 풀고 가디건을 어깨에 걸치면 한결 자연스러워요. 플랫 슈즈나 로퍼를 더하면 좋아요.",
       chips: ["신발은 뭐가 좋을까요?", "다른 코디도 볼래요"],
     };
   }
-  if (text.includes("모르겠")) {
+  if (/안 정했|모르겠/.test(text)) {
     return {
-      text: "괜찮아요. 모를 때는 셔츠와 슬랙스처럼 어디서나 무난한 조합이 가장 안전해요.\n가디건은 실내외 온도에 맞춰 입고 벗기 좋고요.",
+      text: "괜찮아요. 장소가 정해지지 않았을 때는 어디서나 무난한 지금 조합이 가장 안전해요.\n가디건은 실내외 온도에 맞춰 입고 벗기 좋고요. 장소가 정해지면 다시 알려 주세요.",
       chips: ["신발은 뭐가 좋을까요?", "사이즈가 고민돼요"],
     };
   }
