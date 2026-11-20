@@ -82,8 +82,8 @@ export default function AvatarPage() {
       setApp((st) => ({ wearing: { ...st.wearing, [kind]: undefined } }));
       return;
     }
-    // 사진 세트 옷(채팅에서 넣은 추천 옷)은 실측 없이도 바로 입어 볼 수 있어요
-    if (!lookPartOf(app.profile.gender, item) && !toGarment(item, "#000")) {
+    // 착용 사진 세트가 있으면 실측 없이도 바로 입혀요 (사진이 없는 옷은 '준비 중' 안내)
+    if (!look && !toGarment(item, "#000")) {
       showToast(`입어 보려면 ${missingFor(item.category)} 실측이 필요해요.`);
       setOpenId(item.id);
       return;
@@ -133,7 +133,7 @@ export default function AvatarPage() {
               />
               {look.missing && (
                 <span className="absolute inset-x-3 bottom-2 rounded-full bg-white/90 py-1 text-center text-[10px] text-sub">
-                  이 조합 사진은 준비 중이에요
+                  {look.outside ? "이 옷의 착용 사진은 준비 중이에요" : "이 조합 사진은 준비 중이에요"}
                 </span>
               )}
             </div>

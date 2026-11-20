@@ -3,7 +3,7 @@
 // - parts: 이 세트에 들어가는 옷. 옷장 옷의 product(채팅 추천 상품 id) · demo(lib/demoGarments.ts id) · sample(사진 보관함 id) 중 하나와 같으면 그 옷이에요
 // - photos: 조합 이름 → 사진. 조합 이름은 입힌 부위를 top → bottom → outer 순서로 "+"로 이어요 (아무것도 안 입으면 "base")
 //   사진 파일: public/looks/<성별>/<조합 이름>.webp
-// 세트에 없는 옷을 입히면 이 사진 대신 기존 2D 입어보기를 보여줘요.
+// 세트에 없는 옷을 입히면 그 옷은 사진에 넣지 않고 '착용 사진 준비 중' 안내를 보여줘요.
 
 import type { ClosetItem, Gender } from "./data";
 
@@ -47,21 +47,22 @@ export function lookPartOf(gender: Gender, item: LookItem): LookPart | null {
 }
 
 /**
- * 지금 입힌 옷에 맞는 사진. 세트가 없거나 세트 밖 옷을 입었으면 null (기존 2D 입어보기).
+ * 지금 입힌 옷에 맞는 사진. 이 성별의 사진 세트가 없으면 null.
+ * 세트 밖 옷(준비한 사진이 없는 옷)은 사진에 넣지 않고 outside 로 알려요 → 화면에 '준비 중' 안내.
  * 그 조합 사진이 아직 없으면 입힌 부위를 가장 많이 담은 사진을 보여주고 missing 을 알려줘요.
  */
 export function lookPhoto(gender: Gender, worn: LookItem[]) {
   const set = lookSetFor(gender);
   if (!set) return null;
   const parts = worn.map((w) => lookPartOf(gender, w));
-  if (parts.some((p) => !p)) return null;
+  const outside = parts.some((p) => !p);
   const on = ORDER.filter((p) => parts.includes(p));
   const key = on.length ? on.join("+") : "base";
-  if (set.photos[key]) return { src: set.photos[key], key, missing: false };
+  if (set.photos[key]) return { src: set.photos[key], key, missing: outside, outside };
   // 비슷한 사진: 입힌 부위를 가장 많이 담고, 안 입힌 부위는 없는 사진
   const best = Object.keys(set.photos)
     .map((k) => ({ k, ps: k === "base" ? [] : (k.split("+") as LookPart[]) }))
     .filter(({ ps }) => ps.every((p) => on.includes(p)))
     .sort((a, b) => b.ps.length - a.ps.length)[0];
-  return { src: set.photos[best?.k ?? "base"], key, missing: true };
+  return { src: set.photos[best?.k ?? "base"], key, missing: true, outside };
 }
