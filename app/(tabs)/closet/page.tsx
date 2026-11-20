@@ -143,6 +143,11 @@ export default function ClosetPage() {
 
   // 예시 사진을 누르면: 누끼를 따서 정해진 이름·종류로 옷장에 바로 넣어요
   const onSample = async (p: SamplePhoto) => {
+    // 이미 넣은 사진이면 또 넣지 않아요
+    if (app.closet.some((i) => i.sample === p.id)) {
+      showToast(`‘${p.name}’${objectJosa(p.name) === "을" ? "은" : "는"} 이미 옷장에 있어요.`);
+      return;
+    }
     setSampleBusy(p.id);
     // 시연용 옷이면 미리 따 둔 누끼와 실측을 그대로 써요 (lib/demoGarments.ts)
     const demo = p.demo ? DEMO_GARMENTS[p.demo] : undefined;

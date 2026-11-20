@@ -154,6 +154,15 @@ export function myCloset(app: Pick<AppState, "closet" | "profile">) {
   return app.closet.filter((i) => !i.gender || i.gender === app.profile.gender);
 }
 
+/** 같은 상품 링크인지 비교하려고 주소를 다듬어요 (http/https, www, 끝의 / 차이는 무시) */
+export const sameLinkKey = (url: string) =>
+  url
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "")
+    .replace(/\/+$/, "");
+
 /** 이 브라우저에 저장된 기록상 온보딩을 끝냈는지 (처음 방문이면 false) */
 export function savedOnboarded() {
   try {

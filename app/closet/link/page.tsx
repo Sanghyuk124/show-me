@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { LinkField, LinkScreen } from "@/components/LinkField";
 import { cn, digits } from "@/components/ui";
 import { importFromLink } from "@/lib/linkImport";
-import { setApp, showToast, useApp } from "@/lib/store";
+import { sameLinkKey, setApp, showToast, useApp } from "@/lib/store";
 
 /** 체험용 판매처 링크 (lib/data.ts LINK_PRESETS) — 성별마다 2개 */
 const TRY_LINKS = {
@@ -24,7 +24,7 @@ export default function ClosetLinkPage() {
   const [numeric, setNumeric] = useState(false);
   const [numberSize, setNumberSize] = useState("");
   const [busy, setBusy] = useState(false);
-  const { profile } = useApp();
+  const { profile, closet } = useApp();
   // 체험용 링크를 누르면 입력란에 넣고, 클립보드에도 복사해요
   const tryLink = (url: string) => {
     setLink(url);
@@ -55,6 +55,9 @@ export default function ClosetLinkPage() {
     if (busy) return;
     if (!link) return showToast("판매처 상품 링크를 입력해 주세요.");
     if (!chosen) return showToast("구매한 사이즈를 선택해 주세요.");
+    // 이미 옷장에 있는 링크면 또 넣지 않아요
+    const dup = closet.find((i) => i.link && sameLinkKey(i.link) === sameLinkKey(link));
+    if (dup) return showToast(`이미 옷장에 있는 옷이에요 (${dup.name}).`);
     setBusy(true);
     const imp = await importFromLink(link, chosen);
     setBusy(false);
