@@ -40,7 +40,8 @@ export const COPY: Record<Category, { label: string; fields: { key: string; labe
 };
 
 export function guide(item: ClosetItem) {
-  if (item.prefilled) {
+  const hasMeasures = Object.values(item.measures ?? {}).some((v) => String(v).trim());
+  if (item.prefilled || (item.source === "link" && hasMeasures)) {
     return {
       tone: "lav",
       title: "판매처 링크에서 실측을 불러왔어요.",
@@ -50,8 +51,8 @@ export function guide(item: ClosetItem) {
   if (item.source === "link") {
     return {
       tone: "sand",
-      title: "링크 등록 · 실측 자동 입력",
-      lines: ["아직 불러온 실측 값이 없어요.", `${item.category === "outer" && item.id === "cardigan" ? "가디건" : "옷"}을 평평하게 펼쳐 직접 재어주세요.`, "각 항목을 눌러 cm로 입력할 수 있어요."],
+      title: "링크 등록 · 실측 입력 필요",
+      lines: ["아직 불러온 실측 값이 없어요.", "판매처 사이즈표를 보거나, 옷을 평평하게 펼쳐 직접 재어주세요.", "각 항목을 눌러 cm로 입력할 수 있어요."],
     };
   }
   if (item.category === "bag") {

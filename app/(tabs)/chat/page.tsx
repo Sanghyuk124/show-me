@@ -16,14 +16,14 @@ import { myCloset, setApp, showToast, useApp, type ChatMessage } from "@/lib/sto
 // 첫 화면 예시 상담(데이트 룩)에 보이는 옷장 옷 3벌 — 성별마다 달라요 (lib/chat.ts FIRST_EXCHANGE 와 같은 내용)
 const EXAMPLE = {
   female: {
-    title: "자연스럽지만 단정하게",
+    title: "편안하지만 센스 있게",
     outfit: [
-      { id: "shirt", label: "셔츠", name: "아이보리 셔츠", src: "/images/closet/shirt.jpg" },
-      { id: "slacks", label: "슬랙스", name: "블랙 슬랙스", src: "/images/closet/slacks.jpg" },
-      { id: "cardigan", label: "가디건", name: "네이비 가디건", src: "/images/closet/cardigan.jpg" },
+      { id: "demo-f-dunst-blouson", label: "블루종", name: "던스트 해링턴 울 블루종 브라운", src: "/images/closet/women/dunst-harrington-blouson.jpg" },
+      { id: "demo-f-generalidea-denim", label: "데님", name: "제너럴아이디어 와이드 워싱 데님 블루", src: "/images/closet/women/generalidea-wide-denim.jpg" },
+      { id: "demo-f-haharchive-bag", label: "숄더백", name: "하하아카이브 컨투어 숄더백 블랙", src: "/images/closet/women/haharchive-contour-bag.jpg" },
     ],
-    why: ["01   아이보리 셔츠가 얼굴을 환하게 밝혀줘요.", "02   가디건이 부드럽고 다정한 인상을 더해요.", "03   블랙 슬랙스가 전체를 깔끔하게 잡아줘요."],
-    end: ["가지고 있는 검정 토트백을 더하면 충분해요.", "데이트 장소는 어디인가요?"],
+    why: ["01   브라운 울 블루종이 따뜻하고 차분한 인상을 줘요.", "02   빈티지 워싱 와이드 데님이 꾸안꾸 느낌을 더해요.", "03   블랙 숄더백이 전체를 깔끔하게 잡아줘요."],
+    end: ["안에는 옷장의 흰 소프트립 티 하나면 충분해요.", "데이트 장소는 어디인가요?"],
   },
   male: {
     title: "편안하지만 신경 쓴 느낌으로",
