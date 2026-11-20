@@ -1,12 +1,20 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
-import { useApp } from "@/lib/store";
+import { resetApp, useApp } from "@/lib/store";
 
 /** Figma 01 · Show Me 랜딩 */
 export default function SplashPage() {
   // 처음 온 사용자는 온보딩(02~04)으로, 이미 끝낸 사용자는 바로 채팅으로 갑니다.
   const { onboarded } = useApp();
+  // 시연용: 주소 뒤에 ?reset 을 붙여 열면 이 브라우저의 기록을 지우고 처음부터 시작해요 (예: show-me.vercel.app/?reset)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has("reset")) return;
+    resetApp();
+    window.history.replaceState(null, "", "/");
+  }, []);
   return (
     <main className="flex h-full flex-col">
       <header className="pt-safe flex shrink-0 items-center gap-3 px-6 pb-3 leading-[1.5]">
