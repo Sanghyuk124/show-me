@@ -2,10 +2,11 @@
 // - 서버에 Claude API 키(ANTHROPIC_API_KEY)가 있으면 app/api/chat/route.ts 를 통해 Claude가 답해요.
 // - 키가 없으면 아래 cannedReply 의 '미리 써둔 예시 답변'으로 대신 답해요.
 
-import { allTastePicks, myCloset, type AppState } from "./store";
+import { allTastePicks, myCloset, sameLinkKey, type AppState } from "./store";
 import { guessCategory } from "./classify";
-import { closetPicksFor, CONCERNS, PERSONAL_COLORS, tastePhoto, type ClosetItem, type Measures, type Profile } from "./data";
-import { DATE_LOOK_MALE, FIRST_WORK_FEMALE, isFirstWork, PRODUCTS } from "./products";
+import { closetPicksFor, CONCERNS, DUNST_KNIT_LINK, DUNST_PANTS_LINK, PERSONAL_COLORS, tastePhoto, type ClosetItem, type Measures, type Profile } from "./data";
+import { FIRST_WORK_FEMALE, isDateLook, isFirstWork, PRODUCTS } from "./products";
+import { resolveBody } from "./bodyModel";
 
 export interface Reply {
   text: string;
@@ -16,6 +17,8 @@ export interface Reply {
   closet?: string[];
   /** 옷장에 넣어 줄 추천 상품 id (아바타에서 입어 보기) */
   tryOn?: string[];
+  /** 옷장에서 골라 준 옷 (옷장 옷 id) */
+  wardrobe?: string[];
 }
 
 /** 서버로 보내는 대화 한 줄 */
@@ -97,9 +100,9 @@ function buildContext(app: AppState): ChatContext {
  * 2) 그 뒤 "아바타한테 입혀 보고 싶어 / 어떤 핏일까" → 세 벌을 옷장에 넣어 주고 아바타로 안내
  */
 function scriptedReply(message: string, app: AppState): Reply | null {
-  if (app.profile.gender !== "female") return null;
   const text = message.trim();
   const name = app.profile.nickname?.trim() || "사용자";
+  if (app.profile.gender === "male") return maleDateReply(text, name, app);
   const recommended = app.chat.some((m) => m.role === "bot" && m.products?.includes(FIRST_WORK_FEMALE[0]));
   if (recommended && /입혀|입어\s*보|아바타|핏/.test(text)) {
     return {
@@ -122,6 +125,36 @@ function scriptedReply(message: string, app: AppState): Reply | null {
     };
   }
   return null;
+}
+
+/**
+ * 시연 대본 (남성 데이트): 옷장 옷으로 골라 줘요 — 링크로 넣은 던스트 니트·팬츠 + 옷장의 울 블루종
+ * 1) "오늘 데이트가 있어 … 내 옷장에서 추천해 줘" → 세 벌 (옷장 옷 카드, 누르면 상세 치수)
+ * 2) 그 뒤 "고마워" → 마무리 인사
+ */
+function maleDateReply(text: string, name: string, app: AppState): Reply | null {
+  const answered = app.chat.some((m) => m.role === "bot" && m.wardrobe?.length);
+  if (answered && /고마|감사|입어\s*봐야|입어야겠/.test(text)) {
+    return { text: "좋은 데이트 되세요! 아바타 탭에서 이 조합을 미리 입혀 볼 수도 있어요." };
+  }
+  if (!isDateLook(text)) return null;
+  const closet = myCloset(app);
+  const byLink = (url: string) => closet.find((i) => i.link && sameLinkKey(i.link).includes(sameLinkKey(url).split("&")[0]));
+  const knit = byLink(DUNST_KNIT_LINK);
+  const pants = byLink(DUNST_PANTS_LINK);
+  const blouson = closet.find((i) => i.id === "demo-f-dunst-blouson");
+  // 니트 가슴둘레와 내 체형(키·몸무게·상세 치수로 추정한 가슴둘레)의 차이
+  const bodyChest = resolveBody(app.profile, app.body).chest;
+  const knitChest = Number.parseFloat(knit?.measures.chest ?? "122");
+  const gap = Math.round(knitChest - bodyChest);
+  return {
+    text:
+      "오늘 데이트가 있으시군요! 오늘처럼 쌀쌀한 날씨에는 따뜻하면서도 부드러운 인상을 주는 옷이 좋아요.\n" +
+      `가지고 계신 옷들과 즐겨 입으시는 옷, ${name}님의 상세 치수를 고려하여 가장 예쁜 핏으로 골라 보았어요.\n` +
+      "던스트 스트라이프 니트에 카키 팬츠를 입고, 울 블루종을 걸쳐 보세요. 아이보리·카키·브라운의 톤온톤이라 차분하면서도 다정해 보여요.\n" +
+      `해당 제품들은 ${name}님의 체형 치수와 가슴둘레 기준 ${gap}cm 정도 차이가 나서, 평소 즐겨 입으시는 것처럼 오버핏일 거예요.`,
+    wardrobe: [knit, pants, blouson].filter((i) => !!i).map((i) => i!.id),
+  };
 }
 
 export async function getReply(message: string, images: string[], app: AppState): Promise<Reply> {
@@ -192,15 +225,6 @@ async function cannedReply(message: string, app: AppState): Promise<Reply> {
         ? `추운 날엔 옷장에 있는 옷을 겹쳐 입는 게 가장 따뜻해요.\n${look} 조합을 추천해요.\n안쪽은 얇게, 바깥은 도톰하게 입으면 실내에서 벗기도 편해요. 목도리나 비니를 더하면 체감 온도가 확 달라져요.`
         : "추운 날엔 얇은 옷을 여러 겹 겹쳐 입는 게 가장 따뜻해요.\n옷장에 니트나 아우터를 등록해 두면 가진 옷으로 코디를 골라 드릴게요.",
       chips: ["신발은 뭐가 좋을까요?", "다른 코디도 볼래요"],
-    };
-  }
-
-  // 남성 데이트 룩은 시연용 고정 세트로 답해요 (lib/products.ts DATE_LOOK_MALE)
-  if (app.profile.gender === "male" && /데이트|소개팅/.test(text)) {
-    return {
-      text: "데이트 룩으로는 던스트의 스트라이프 청키 스웨터와 더블 플리츠 와이드 치노 슬랙스를 추천해요.\n아이보리·카키 스트라이프 니트에 같은 카키 톤의 와이드 치노를 맞추면 차분하면서도 다정한 인상을 줘요.\n기준 옷 실측을 입력해 두면 맞는 사이즈도 함께 알려드릴게요.",
-      products: DATE_LOOK_MALE,
-      chips: ["사이즈가 고민돼요", "신발은 뭐가 좋을까요?"],
     };
   }
 

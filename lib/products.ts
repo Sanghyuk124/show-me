@@ -49,7 +49,6 @@ export const isFirstWork = (text: string) => /첫\s*출근|출근\s*첫|입사|�
 
 /** 성별·질문에 맞는 시연용 고정 추천 (없으면 null) */
 export function pinnedPicks(gender: Gender | undefined, text: string) {
-  if (gender === "male" && isDateLook(text)) return DATE_LOOK_MALE;
   if (gender === "female" && isFirstWork(text)) return FIRST_WORK_FEMALE;
   return null;
 }

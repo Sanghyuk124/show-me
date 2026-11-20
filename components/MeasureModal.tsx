@@ -124,6 +124,22 @@ function NameEditor({ item }: { item: ClosetItem }) {
   );
 }
 
+/** 입력 칸에는 없지만 저장된 실측 (판매처 사이즈표에서 불러온 값) 이름 */
+const EXTRA_LABEL: Record<string, string> = {
+  raglan: "화장",
+  hem: "밑단 둘레",
+  armhole: "암홀",
+  armWidth: "팔통",
+  thigh: "허벅지 둘레",
+  rise: "밑위",
+  hip: "엉덩이 둘레",
+  sleeve: "팔 길이",
+  shoulder: "어깨 너비",
+  chest: "가슴 둘레",
+  waist: "허리 둘레",
+  length: "총 기장",
+};
+
 export function MeasureModal({ item, onClose }: { item: ClosetItem; onClose: () => void }) {
   const app = useApp();
   const [draft, setDraft] = useState<Measures>(item.measures);
@@ -182,6 +198,24 @@ export function MeasureModal({ item, onClose }: { item: ClosetItem; onClose: () 
           </label>
         ))}
       </div>
+
+      {(() => {
+        const extra = Object.entries(item.measures ?? {}).filter(([k, v]) => String(v).trim() && !copy.fields.some((f) => f.key === k) && EXTRA_LABEL[k]);
+        if (!extra.length) return null;
+        return (
+          <div className="flex flex-col gap-1.5 leading-[1.4]">
+            <span className="text-[12px] font-medium text-sub">그 밖의 저장된 실측</span>
+            <div className="grid grid-cols-3 gap-1">
+              {extra.map(([k, v]) => (
+                <span key={k} className="flex flex-col items-center rounded-[7px] bg-cream py-1.5">
+                  <span className="text-[9.5px] text-sub">{EXTRA_LABEL[k]}</span>
+                  <span className="text-[12px] font-bold">{v}cm</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {item.prefilled ? (
         <>

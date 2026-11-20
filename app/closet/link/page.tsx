@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import { LinkField, LinkScreen } from "@/components/LinkField";
 import { cn, digits } from "@/components/ui";
 import { importFromLink } from "@/lib/linkImport";
+import { DUNST_KNIT_LINK, DUNST_PANTS_LINK } from "@/lib/data";
 import { sameLinkKey, setApp, showToast, useApp } from "@/lib/store";
 
 /** 체험용 판매처 링크 (lib/data.ts LINK_PRESETS) — 성별마다 2개 */
 const TRY_LINKS = {
   female: ["example.com/showme/women-cardigan", "example.com/showme/women-denim"],
-  male: ["example.com/showme/men-knit", "example.com/showme/men-denim"],
+  male: [DUNST_KNIT_LINK, DUNST_PANTS_LINK],
 };
 
 const TOP_ROW = ["XS", "S", "M", "L"];
