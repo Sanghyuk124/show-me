@@ -131,6 +131,14 @@ export const SAMPLE_PHOTOS: Record<
   male: [
     { id: "men-knit", name: "네이비 UCLA 니트", category: "top", src: "/demo-photos/men-knit.jpg", demo: "m-knit" },
     { id: "men-denim", name: "블랙 벌룬 데님", category: "bottom", src: "/demo-photos/men-denim.jpg", demo: "m-bdenim" },
+    {
+      id: "men-jacket",
+      name: "블랙 바시티 재킷",
+      category: "outer",
+      src: "/demo-photos/men-jacket.jpg",
+      // 총기장 67 · 어깨 56 · 팔길이 64 (가슴은 사진으로 추정)
+      measures: { length: "67", shoulder: "56", sleeve: "64", chest: "128", waist: "120" },
+    },
   ],
 };
 
