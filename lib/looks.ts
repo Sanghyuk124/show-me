@@ -24,7 +24,7 @@ export const LOOK_SETS: LookSet[] = [
     // 여성 첫 출근 룩 (던스트 브이넥 스웨터 · 세미 부츠컷 슬랙스 · 시야쥬 부클 롱코트)
     gender: "female",
     parts: { top: "dunst-classic-vneck-sweater", bottom: "dunst-semi-bootcut-slacks", outer: "siyazu-boucle-long-coat" },
-    photos: keys("female", ["base", "top", "bottom", "outer", "top+bottom"]),
+    photos: keys("female", ["base", "top", "bottom", "outer", "top+bottom", "top+outer", "bottom+outer", "top+bottom+outer"]),
   },
 ];
 
